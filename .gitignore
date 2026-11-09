@@ -1,0 +1,5 @@
+.gitnexus
+bin/
+*.exe
+*.db
+.env

@@ -1,0 +1,488 @@
+[
+  {
+    "id": "one-piece",
+    "title": "One Piece",
+    "author": "Eiichiro Oda",
+    "genres": ["Action", "Adventure", "Shounen"],
+    "status": "ongoing",
+    "total_chapters": 1100,
+    "description": "Pirate adventure"
+  },
+  {
+    "id": "demon-slayer",
+    "title": "Demon Slayer: Kimetsu no Yaiba",
+    "author": "Koyoharu Gotouge",
+    "genres": ["Action", "Supernatural", "Adventure", "Shounen"],
+    "status": "completed",
+    "total_chapters": 205,
+    "description": "Tanjiro fights demons after his family is slaughtered."
+  },
+  {
+    "id": "attack-on-titan",
+    "title": "Attack on Titan",
+    "author": "Hajime Isayama",
+    "genres": ["Action", "Drama", "Mystery", "Shounen"],
+    "status": "completed",
+    "total_chapters": 139,
+    "description": "Humanity fights for survival against giant Titans."
+  },
+  {
+    "id": "naruto",
+    "title": "Naruto",
+    "author": "Masashi Kishimoto",
+    "genres": ["Action", "Shounen", "Martial Arts"],
+    "status": "completed",
+    "total_chapters": 700,
+    "description": "Ninja story of Naruto Uzumaki wanting to become Hokage."
+  },
+  {
+    "id": "dragon-ball",
+    "title": "Dragon Ball",
+    "author": "Akira Toriyama",
+    "genres": ["Action", "Adventure", "Martial Arts", "Shounen"],
+    "status": "completed",
+    "total_chapters": 520,
+    "description": "Goku grows up training in martial arts and seeks the Dragon Balls."
+  },
+  {
+    "id": "detective-conan",
+    "title": "Detective Conan",
+    "author": "Gosho Aoyama",
+    "genres": ["Mystery", "Crime", "Adventure", "Shounen"],
+    "status": "ongoing",
+    "total_chapters": 1000,
+    "description": "Teen detective is shrunk to a child and solves mysteries while searching for a cure."
+  },
+  {
+    "id": "slamdunk",
+    "title": "Slam Dunk",
+    "author": "Takehiko Inoue",
+    "genres": ["Sports", "Comedy", "Drama", "Shounen"],
+    "status": "completed",
+    "total_chapters": 276,
+    "description": "A delinquent joins his high school basketball team and discovers passion for the sport."
+  },
+  {
+    "id": "haikyuu",
+    "title": "Haikyuu!!",
+    "author": "Haruichi Furudate",
+    "genres": ["Sports", "Comedy", "Drama", "Shounen"],
+    "status": "completed",
+    "total_chapters": 402,
+    "description": "A short volleyball player aims to lead his team to nationals."
+  },
+  {
+    "id": "hunter-x-hunter",
+    "title": "Hunter x Hunter",
+    "author": "Yoshihiro Togashi",
+    "genres": ["Adventure", "Action", "Fantasy", "Shounen"],
+    "status": "hiatus",
+    "total_chapters": 390,
+    "description": "Gon becomes a Hunter to find his father and encounters dangerous challenges."
+  },
+  {
+    "id": "fullmetal-alchemist",
+    "title": "Fullmetal Alchemist",
+    "author": "Hiromu Arakawa",
+    "genres": ["Action", "Adventure", "Fantasy", "Shounen"],
+    "status": "completed",
+    "total_chapters": 116,
+    "description": "Two brothers use alchemy in a quest to restore their bodies after a tragic accident."
+  },
+  {
+    "id": "jojos-bizarre-adventure",
+    "title": "JoJo's Bizarre Adventure",
+    "author": "Hirohiko Araki",
+    "genres": ["Action", "Adventure", "Supernatural", "Shounen"],
+    "status": "ongoing",
+    "total_chapters": 1400,
+    "description": "Generational saga of the Joestar family and their battles with bizarre forces."
+  },
+  {
+    "id": "world-trigger",
+    "title": "World Trigger",
+    "author": "Daisuke Ashihara",
+    "genres": ["Action", "Sci-Fi", "Adventure", "Shounen"],
+    "status": "ongoing",
+    "total_chapters": 300,
+    "description": "Agents defend Earth from interdimensional beings using strategic battles."
+  },
+  {
+    "id": "gintama",
+    "title": "Gintama",
+    "author": "Hideaki Sorachi",
+    "genres": ["Action", "Comedy", "Sci-Fi", "Shounen"],
+    "status": "completed",
+    "total_chapters": 704,
+    "description": "A samurai freelancer takes odd jobs in an alien-occupied Edo."
+  },
+  {
+    "id": "bleach",
+    "title": "Bleach",
+    "author": "Tite Kubo",
+    "genres": ["Action", "Adventure", "Supernatural", "Shounen"],
+    "status": "completed",
+    "total_chapters": 686,
+    "description": "A teenager becomes a Soul Reaper and battles evil spirits."
+  },
+  {
+    "id": "yu-yu-hakusho",
+    "title": "Yu Yu Hakusho",
+    "author": "Yoshihiro Togashi",
+    "genres": ["Action", "Supernatural", "Comedy", "Shounen"],
+    "status": "completed",
+    "total_chapters": 175,
+    "description": "A teen becomes a Spirit Detective after dying and returning to life."
+  },
+  {
+    "id": "kingdom",
+    "title": "Kingdom",
+    "author": "Yasuhisa Hara",
+    "genres": ["Historical", "Action", "War", "Seinen"],
+    "status": "ongoing",
+    "total_chapters": 800,
+    "description": "Two boys rise through the ranks of ancient China warring states to unify the kingdom."
+  },
+  {
+    "id": "inuyasha",
+    "title": "Inuyasha",
+    "author": "Rumiko Takahashi",
+    "genres": ["Adventure", "Fantasy", "Romance", "Shounen"],
+    "status": "completed",
+    "total_chapters": 558,
+    "description": "A schoolgirl travels to the Sengoku era and teams with a half-demon to collect shards of a sacred jewel."
+  },
+  {
+    "id": "ashita-no-joe",
+    "title": "Ashita no Joe",
+    "author": "Asao Takamori & Tetsuya Chiba",
+    "genres": ["Sports", "Drama", "Shounen"],
+    "status": "completed",
+    "total_chapters": 170,
+    "description": "An underdog boxer rises through hardships in the ring and life."
+  },
+  {
+    "id": "dragon-quest-dai",
+    "title": "Dragon Quest: The Adventure of Dai",
+    "author": "Riku Sanjo & Koji Inada",
+    "genres": ["Action", "Adventure", "Fantasy", "Shounen"],
+    "status": "completed",
+    "total_chapters": 370,
+    "description": "A young hero fights dark forces in a classic RPG-style world."
+  },
+  {
+    "id": "death-note",
+    "title": "Death Note",
+    "author": "Tsugumi Ohba & Takeshi Obata",
+    "genres": ["Mystery", "Psychological", "Supernatural", "Shounen"],
+    "status": "completed",
+    "total_chapters": 108,
+    "description": "A notebook that kills anyone whose name is written in it sparks a cat-and-mouse battle."
+  },
+  {
+    "id": "berserk",
+    "title": "Berserk",
+    "author": "Kentaro Miura",
+    "genres": ["Dark Fantasy", "Action", "Seinen"],
+    "status": "ongoing",
+    "total_chapters": 360,
+    "description": "A lone mercenary with a tragic past battles demons in a brutal dark world."
+  },
+  {
+    "id": "tokyo-ghoul",
+    "title": "Tokyo Ghoul",
+    "author": "Sui Ishida",
+    "genres": ["Horror", "Action", "Supernatural", "Seinen"],
+    "status": "completed",
+    "total_chapters": 144,
+    "description": "A college student becomes half-ghoul and must survive in a violent world."
+  },
+  {
+    "id": "the-promised-neverland",
+    "title": "The Promised Neverland",
+    "author": "Kaiu Shirai & Posuka Demizu",
+    "genres": ["Mystery", "Thriller", "Sci-Fi", "Shounen"],
+    "status": "completed",
+    "total_chapters": 181,
+    "description": "Orphaned kids uncover terrifying secrets about their home."
+  },
+  {
+    "id": "mob-psycho-100",
+    "title": "Mob Psycho 100",
+    "author": "ONE",
+    "genres": ["Action", "Comedy", "Supernatural", "Shounen"],
+    "status": "completed",
+    "total_chapters": 100,
+    "description": "A powerful psychic teen tries to live a normal life."
+  },
+  {
+    "id": "rorouni-kenshin",
+    "title": "Rurouni Kenshin",
+    "author": "Nobuhiro Watsuki",
+    "genres": ["Action", "Historical", "Romance", "Shounen"],
+    "status": "completed",
+    "total_chapters": 255,
+    "description": "A wandering swordsman seeks atonement after a violent past."
+  },
+  {
+    "id": "made-in-abyss",
+    "title": "Made in Abyss",
+    "author": "Akihito Tsukushi",
+    "genres": ["Adventure", "Fantasy", "Mystery", "Seinen"],
+    "status": "ongoing",
+    "total_chapters": 80,
+    "description": "Explorers descend into a dangerous abyss with strange creatures and relics."
+  },
+  {
+    "id": "vinland-saga",
+    "title": "Vinland Saga",
+    "author": "Makoto Yukimura",
+    "genres": ["Historical", "Action", "Drama", "Seinen"],
+    "status": "ongoing",
+    "total_chapters": 200,
+    "description": "A young warrior quest for revenge in Viking age Europe."
+  },
+  {
+    "id": "chainsaw-man",
+    "title": "Chainsaw Man",
+    "author": "Tatsuki Fujimoto",
+    "genres": ["Action", "Horror", "Comedy", "Shounen"],
+    "status": "ongoing",
+    "total_chapters": 150,
+    "description": "A devil-hunter bonded with a devil fights other devils."
+  },
+  {
+    "id": "spy-x-family",
+    "title": "Spy x Family",
+    "author": "Tatsuya Endo",
+    "genres": ["Action", "Comedy", "Slice of Life", "Shounen"],
+    "status": "ongoing",
+    "total_chapters": 120,
+    "description": "A spy must assemble a fake family for a mission — not knowing they all have secrets."
+  },
+  {
+    "id": "dorohedoro",
+    "title": "Dorohedoro",
+    "author": "Q Hayashida",
+    "genres": ["Dark Fantasy", "Action", "Horror", "Seinen"],
+    "status": "completed",
+    "total_chapters": 167,
+    "description": "In a grim, chaotic world, a man with a reptile head searches for the sorcerer who cursed him."
+  },
+  {
+    "id": "20th-century-boys",
+    "title": "20th Century Boys",
+    "author": "Naoki Urasawa",
+    "genres": ["Mystery", "Psychological", "Sci-Fi", "Seinen"],
+    "status": "completed",
+    "total_chapters": 249,
+    "description": "Childhood friends confront a mysterious cult whose leader may be linked to their past."
+  },
+  {
+    "id": "black-clover",
+    "title": "Black Clover",
+    "author": "Yūki Tabata",
+    "genres": ["Fantasy", "Action", "Adventure", "Shounen"],
+    "status": "completed",
+    "total_chapters": 368,
+    "description": "A boy born without magic strives to become the Wizard King in a world where magic is everything."
+  },
+  {
+    "id": "jujutsu-kaisen",
+    "title": "Jujutsu Kaisen",
+    "author": "Gege Akutami",
+    "genres": ["Supernatural", "Action", "Dark Fantasy", "Shounen"],
+    "status": "completed",
+    "total_chapters": 271,
+    "description": "A high school student becomes involved in the dangerous world of curses and jujutsu sorcerers."
+  },
+  {
+    "id": "boku-no-hero-academia",
+    "title": "My Hero Academia",
+    "author": "Kohei Horikoshi",
+    "genres": ["Superhero", "Action", "Drama", "Shounen"],
+    "status": "completed",
+    "total_chapters": 430,
+    "description": "In a world where most people have superpowers, a powerless boy dreams of becoming a hero."
+  },
+  {
+    "id": "magi",
+    "title": "Magi: The Labyrinth of Magic",
+    "author": "Shinobu Ohtaka",
+    "genres": ["Adventure", "Fantasy", "Action", "Shounen"],
+    "status": "completed",
+    "total_chapters": 369,
+    "description": "A magical adventure inspired by Arabian Nights following Aladdin and his allies."
+  },
+  {
+    "id": "claymore",
+    "title": "Claymore",
+    "author": "Norihiro Yagi",
+    "genres": ["Dark Fantasy", "Action", "Horror", "Shounen"],
+    "status": "completed",
+    "total_chapters": 155,
+    "description": "Female warriors battle monstrous Yoma while struggling with their own humanity."
+  },
+  {
+    "id": "monster",
+    "title": "Monster",
+    "author": "Naoki Urasawa",
+    "genres": ["Mystery", "Psychological", "Thriller", "Seinen"],
+    "status": "completed",
+    "total_chapters": 162,
+    "description": "A surgeon hunts a former patient who grew into a terrifying serial killer."
+  },
+  {
+    "id": "vagabond",
+    "title": "Vagabond",
+    "author": "Takehiko Inoue",
+    "genres": ["Historical", "Action", "Drama", "Seinen"],
+    "status": "hiatus",
+    "total_chapters": 327,
+    "description": "A philosophical retelling of the life of legendary swordsman Miyamoto Musashi."
+  },
+  {
+    "id": "golden-kamuy",
+    "title": "Golden Kamuy",
+    "author": "Satoru Noda",
+    "genres": ["Historical", "Action", "Adventure", "Seinen"],
+    "status": "completed",
+    "total_chapters": 314,
+    "description": "A treasure hunt in Hokkaido involving soldiers, criminals, and Ainu culture."
+  },
+  {
+    "id": "parasyte",
+    "title": "Parasyte",
+    "author": "Hitoshi Iwaaki",
+    "genres": ["Horror", "Sci-Fi", "Psychological", "Seinen"],
+    "status": "completed",
+    "total_chapters": 64,
+    "description": "Alien parasites invade humanity by taking control of human bodies."
+  },
+  {
+    "id": "ajin",
+    "title": "Ajin: Demi-Human",
+    "author": "Gamon Sakurai",
+    "genres": ["Action", "Horror", "Supernatural", "Seinen"],
+    "status": "completed",
+    "total_chapters": 86,
+    "description": "Immortal beings are hunted and exploited by the government."
+  },
+  {
+    "id": "erased",
+    "title": "Erased",
+    "author": "Kei Sanbe",
+    "genres": ["Mystery", "Thriller", "Supernatural", "Seinen"],
+    "status": "completed",
+    "total_chapters": 44,
+    "description": "A man travels back to his childhood to prevent a series of murders."
+  },
+  {
+    "id": "blue-lock",
+    "title": "Blue Lock",
+    "author": "Muneyuki Kaneshiro & Yusuke Nomura",
+    "genres": ["Sports", "Drama", "Psychological", "Shounen"],
+    "status": "ongoing",
+    "total_chapters": 300,
+    "description": "Strikers compete in a ruthless program to create Japan’s ultimate soccer ace."
+  },
+  {
+    "id": "ping-pong",
+    "title": "Ping Pong",
+    "author": "Taiyo Matsumoto",
+    "genres": ["Sports", "Drama", "Seinen"],
+    "status": "completed",
+    "total_chapters": 55,
+    "description": "A realistic and emotional take on competitive table tennis."
+  },
+  {
+    "id": "fire-punch",
+    "title": "Fire Punch",
+    "author": "Tatsuki Fujimoto",
+    "genres": ["Dark Fantasy", "Action", "Psychological", "Shounen"],
+    "status": "completed",
+    "total_chapters": 83,
+    "description": "A cursed man who burns eternally seeks meaning in a cruel frozen world."
+  },
+  {
+    "id": "pluto",
+    "title": "Pluto",
+    "author": "Naoki Urasawa",
+    "genres": ["Sci-Fi", "Mystery", "Psychological", "Seinen"],
+    "status": "completed",
+    "total_chapters": 65,
+    "description": "A robot detective investigates murders tied to the world’s strongest robots."
+  },
+  {
+    "id": "gantz",
+    "title": "Gantz",
+    "author": "Hiroya Oku",
+    "genres": ["Action", "Sci-Fi", "Horror", "Seinen"],
+    "status": "completed",
+    "total_chapters": 383,
+    "description": "Dead people are forced into deadly alien-hunting games."
+  },
+  {
+    "id": "land-of-the-lustrous",
+    "title": "Land of the Lustrous",
+    "author": "Haruko Ichikawa",
+    "genres": ["Fantasy", "Psychological", "Action", "Seinen"],
+    "status": "completed",
+    "total_chapters": 108,
+    "description": "Gem-based beings fight mysterious invaders while questioning identity and purpose."
+  },
+  {
+    "id": "grand-blue",
+    "title": "Grand Blue",
+    "author": "Kenji Inoue & Kimitake Yoshioka",
+    "genres": ["Comedy", "Slice of Life", "Seinen"],
+    "status": "ongoing",
+    "total_chapters": 100,
+    "description": "College life chaos centered around diving, alcohol, and friendship."
+  },
+  {
+    "id": "nana",
+    "title": "Nana",
+    "author": "Ai Yazawa",
+    "genres": ["Drama", "Music", "Romance", "Shoujo"],
+    "status": "hiatus",
+    "total_chapters": 84,
+    "description": "Two young women with the same name move to Tokyo and forge a deep bond despite very different lives."
+  },
+  {
+    "id": "fruits-basket",
+    "title": "Fruits Basket",
+    "author": "Natsuki Takaya",
+    "genres": ["Romance", "Drama", "Supernatural", "Shoujo"],
+    "status": "completed",
+    "total_chapters": 136,
+    "description": "An orphaned high school girl lives with a mysterious family cursed by the Chinese Zodiac."
+  },
+  {
+    "id": "ouran-high-school-host-club",
+    "title": "Ouran High School Host Club",
+    "author": "Bisco Hatori",
+    "genres": ["Comedy", "Romance", "School", "Shoujo"],
+    "status": "completed",
+    "total_chapters": 87,
+    "description": "A scholarship student is forced to join an elite male host club after breaking an expensive vase."
+  },
+  {
+    "id": "nodame-cantabile",
+    "title": "Nodame Cantabile",
+    "author": "Tomoko Ninomiya",
+    "genres": ["Music", "Comedy", "Romance", "Josei"],
+    "status": "completed",
+    "total_chapters": 146,
+    "description": "A talented perfectionist musician meets an eccentric pianist who plays by ear."
+  },
+  {
+    "id": "chihayafuru",
+    "title": "Chihayafuru",
+    "author": "Yuki Suetsugu",
+    "genres": ["Sports", "Drama", "Josei"],
+    "status": "completed",
+    "total_chapters": 247,
+    "description": "A passionate girl strives to become the world champion of competitive karuta card game."
+  }
+]

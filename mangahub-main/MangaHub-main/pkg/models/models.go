@@ -51,6 +51,7 @@ type UserProgress struct {
 	CurrentChapter int       `json:"current_chapter" db:"current_chapter"`
 	Status         string    `json:"status" db:"status"`
 	UpdatedAt      time.Time `json:"updated_at" db:"updated_at"`
+	Version        int       `json:"version" db:"version"`
 }
 
 // LoginRequest for user login
