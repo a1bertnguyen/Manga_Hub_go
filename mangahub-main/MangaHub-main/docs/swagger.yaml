@@ -1,0 +1,383 @@
+definitions:
+  main.AddToLibraryRequest:
+    properties:
+      manga_id:
+        type: string
+      status:
+        enum:
+        - reading
+        - completed
+        - plan_to_read
+        type: string
+    required:
+    - manga_id
+    type: object
+  main.UpdateProgressRequest:
+    properties:
+      current_chapter:
+        minimum: 0
+        type: integer
+      manga_id:
+        type: string
+      status:
+        enum:
+        - reading
+        - completed
+        - plan_to_read
+        type: string
+    required:
+    - manga_id
+    type: object
+  models.LoginRequest:
+    properties:
+      password:
+        type: string
+      username:
+        type: string
+    required:
+    - password
+    - username
+    type: object
+  models.LoginResponse:
+    properties:
+      token:
+        type: string
+      user_id:
+        type: string
+      username:
+        type: string
+    type: object
+  models.Manga:
+    properties:
+      author:
+        type: string
+      description:
+        type: string
+      genres:
+        items:
+          type: string
+        type: array
+      id:
+        type: string
+      status:
+        type: string
+      title:
+        type: string
+      total_chapters:
+        type: integer
+    type: object
+  models.RegisterRequest:
+    properties:
+      email:
+        type: string
+      password:
+        minLength: 8
+        type: string
+      username:
+        type: string
+    required:
+    - email
+    - password
+    - username
+    type: object
+info:
+  contact: {}
+paths:
+  /auth/login:
+    post:
+      consumes:
+      - application/json
+      description: Authenticate user and return JWT token
+      parameters:
+      - description: Login credentials
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.LoginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: JWT token returned
+          schema:
+            $ref: '#/definitions/models.LoginResponse'
+        "400":
+          description: Invalid request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Invalid credentials
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Login user
+      tags:
+      - Auth
+  /auth/register:
+    post:
+      consumes:
+      - application/json
+      description: Create a new user account
+      parameters:
+      - description: User registration details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.RegisterRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: User created and JWT token returned
+          schema:
+            $ref: '#/definitions/models.LoginResponse'
+        "400":
+          description: Invalid request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Register a new user
+      tags:
+      - Auth
+  /manga:
+    get:
+      description: Search manga by title (?search= or ?title=) or return all if no
+        query
+      parameters:
+      - description: Search term (title)
+        in: query
+        name: search
+        type: string
+      - description: Alternative search term
+        in: query
+        name: title
+        type: string
+      - description: Bearer {token}
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: List of manga with count
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Search or list all manga
+      tags:
+      - Manga
+    post:
+      consumes:
+      - application/json
+      description: Add a new manga to the catalog
+      parameters:
+      - description: Manga data
+        in: body
+        name: manga
+        required: true
+        schema:
+          $ref: '#/definitions/models.Manga'
+      - description: Bearer {token}
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/models.Manga'
+        "400":
+          description: Invalid input
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Create new manga
+      tags:
+      - Manga
+  /manga/{id}:
+    get:
+      description: Retrieve detailed information about a specific manga
+      parameters:
+      - description: Manga ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Bearer {token}
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Manga'
+        "404":
+          description: Manga not found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get manga by ID
+      tags:
+      - Manga
+  /users/library:
+    get:
+      description: Retrieve all manga in the authenticated user's library
+      parameters:
+      - description: Bearer {token}
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Library with count
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get user library
+      tags:
+      - Library
+    post:
+      consumes:
+      - application/json
+      description: Add a manga to the authenticated user's library with optional status
+      parameters:
+      - description: Bearer {token}
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: Manga ID and optional status
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/main.AddToLibraryRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Added to library
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Invalid input
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Manga not found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Add manga to library
+      tags:
+      - Library
+  /users/progress:
+    put:
+      consumes:
+      - application/json
+      description: Update current chapter and optional status. Triggers broadcast
+        to TCP.
+      parameters:
+      - description: Bearer {token}
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: Progress update data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/main.UpdateProgressRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Progress updated and broadcasted
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Invalid input
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Update reading progress
+      tags:
+      - Progress
+swagger: "2.0"

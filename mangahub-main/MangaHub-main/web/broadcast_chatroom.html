@@ -1,0 +1,680 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>MangaHub Chat Room</title>
+    <meta charset="UTF-8">
+    <style>
+        /* ALL YOUR CSS FROM BEFORE — KEEP EXACTLY AS IS */
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        body.dark-mode {
+            background: #18191a;
+        }
+        .container {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            width: 90%;
+            max-width: 800px;
+            height: 600px;
+            display: flex;
+            flex-direction: column;
+        }
+        body.dark-mode .container {
+            background: #242526;
+        }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 15px 15px 0 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .header h1 { 
+            font-size: 24px; 
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 60%;
+        }
+        #roomDisplay {
+            font-size: 18px;
+            margin-left: 10px;
+            opacity: 0.9;
+        }
+        .header-right {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+        .online-count {
+            background: rgba(255,255,255,0.2);
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 14px;
+        }
+        .dark-mode-toggle {
+            background: rgba(255,255,255,0.2);
+            border: none;
+            color: white;
+            padding: 8px 12px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 18px;
+        }
+        .dark-mode-toggle:hover {
+            background: rgba(255,255,255,0.3);
+        }
+        #login-screen {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 40px;
+        }
+        body.dark-mode #login-screen h2,
+        body.dark-mode #login-screen p {
+            color: #e4e6eb;
+        }
+        #login-screen input, #login-screen select {
+            width: 300px;
+            padding: 15px;
+            margin: 10px;
+            border: 2px solid #667eea;
+            border-radius: 8px;
+            font-size: 16px;
+        }
+        body.dark-mode #login-screen input,
+        body.dark-mode #login-screen select {
+            background: #3a3b3c;
+            border-color: #667eea;
+            color: #e4e6eb;
+        }
+        #login-screen button {
+            width: 300px;
+            padding: 15px;
+            margin: 10px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        #login-screen button:hover {
+            background: #764ba2;
+        }
+        #chat-screen {
+            display: none;
+            flex: 1;
+            flex-direction: column;
+        }
+        #messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            background: #f0f2f5;
+        }
+        body.dark-mode #messages {
+            background: #18191a;
+        }
+        
+        .message-wrapper {
+            margin: 8px 0;
+            display: flex;
+            align-items: flex-end;
+            animation: slideIn 0.3s ease;
+        }
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .message-wrapper.own {
+            justify-content: flex-end;
+        }
+        
+        .message-wrapper.other {
+            justify-content: flex-start;
+        }
+        
+        .message {
+            max-width: 60%;
+            padding: 10px 16px;
+            border-radius: 18px;
+            position: relative;
+            word-wrap: break-word;
+        }
+        
+        .message-wrapper.own .message {
+            background: #0084ff;
+            color: white;
+            border-bottom-right-radius: 4px;
+        }
+        
+        .message-wrapper.other .message {
+            background: #e4e6eb;
+            color: #050505;
+            border-bottom-left-radius: 4px;
+        }
+        body.dark-mode .message-wrapper.other .message {
+            background: #3a3b3c;
+            color: #e4e6eb;
+        }
+        
+        .message .username {
+            font-size: 12px;
+            font-weight: 600;
+            margin-bottom: 4px;
+            display: block;
+        }
+        
+        .message-wrapper.own .message .username {
+            display: none;
+        }
+        
+        .message .text {
+            font-size: 15px;
+            line-height: 1.4;
+        }
+        
+        .message .time {
+            font-size: 11px;
+            opacity: 0.7;
+            margin-top: 4px;
+            display: block;
+        }
+        
+        .message-wrapper.system {
+            justify-content: center;
+            margin: 15px 0;
+        }
+        
+        .message-wrapper.system .message {
+            background: transparent;
+            color: #65676b;
+            font-size: 13px;
+            padding: 8px 12px;
+            border-radius: 12px;
+            text-align: center;
+            max-width: 80%;
+        }
+        body.dark-mode .message-wrapper.system .message {
+            color: #b0b3b8;
+        }
+        
+        #typing-indicator {
+            display: none;
+            padding: 15px 20px;
+            font-size: 14px;
+            color: #65676b;
+            font-style: italic;
+            background: #f0f2f5;
+            border-top: 1px solid #ddd;
+            text-align: left;
+            min-height: 40px;
+        }
+        body.dark-mode #typing-indicator {
+            background: #18191a;
+            color: #b0b3b8;
+            border-top-color: #333;
+        }
+        
+        .typing-dots {
+            display: inline-block;
+            margin-left: 5px;
+        }
+        .typing-dots span {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #90949c;
+            margin: 0 2px;
+            animation: typingDot 1.4s infinite ease-in-out;
+        }
+        body.dark-mode .typing-dots span {
+            background: #b0b3b8;
+        }
+        .typing-dots span:nth-child(1) { animation-delay: 0s; }
+        .typing-dots span:nth-child(2) { animation-delay: 0.2s; }
+        .typing-dots span:nth-child(3) { animation-delay: 0.4s; }
+        @keyframes typingDot {
+            0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
+            30% { transform: translateY(-10px); opacity: 1; }
+        }
+        
+        .input-area {
+            display: flex;
+            gap: 10px;
+            padding: 15px 20px;
+            background: white;
+            border-top: 1px solid #e4e6eb;
+            border-radius: 0 0 15px 15px;
+        }
+        body.dark-mode .input-area {
+            background: #242526;
+            border-top-color: #3a3b3c;
+        }
+        
+        .input-area input {
+            flex: 1;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 20px;
+            background: #f0f2f5;
+            font-size: 15px;
+        }
+        .input-area input:focus {
+            outline: 2px solid #0084ff;
+        }
+        body.dark-mode .input-area input {
+            background: #3a3b3c;
+            color: #e4e6eb;
+        }
+        
+        .input-area button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 20px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+        
+        .btn-send {
+            background: #0084ff;
+            color: white;
+        }
+        .btn-send:hover {
+            background: #0073e6;
+        }
+        
+        .btn-leave {
+            background: #e4e6eb;
+            color: #050505;
+        }
+        body.dark-mode .btn-leave {
+            background: #3a3b3c;
+            color: #e4e6eb;
+        }
+        .btn-leave:hover {
+            background: #d8dadf;
+        }
+        body.dark-mode .btn-leave:hover {
+            background: #4e4f50;
+        }
+        
+        .status {
+            text-align: center;
+            padding: 8px;
+            font-size: 12px;
+            color: #65676b;
+        }
+        body.dark-mode .status {
+            color: #b0b3b8;
+        }
+        .status.connected { color: #31a24c; }
+        .status.disconnected { color: #fa383e; }
+
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.6);
+        }
+        .modal-content {
+            background-color: white;
+            margin: 15% auto;
+            padding: 30px;
+            border-radius: 15px;
+            width: 90%;
+            max-width: 400px;
+            text-align: center;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+        }
+        body.dark-mode .modal-content {
+            background-color: #242526;
+            color: #e4e6eb;
+        }
+        .modal-content h2 {
+            margin-bottom: 15px;
+            color: #667eea;
+        }
+        .modal-content p {
+            margin-bottom: 25px;
+            color: #65676b;
+        }
+        body.dark-mode .modal-content p {
+            color: #b0b3b8;
+        }
+        .modal-buttons {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+        }
+        .modal-buttons button {
+            padding: 12px 30px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 14px;
+        }
+        .btn-confirm {
+            background: #fa383e;
+            color: white;
+        }
+        .btn-confirm:hover {
+            background: #d32f2f;
+        }
+        .btn-cancel {
+            background: #e4e6eb;
+            color: #050505;
+        }
+        body.dark-mode .btn-cancel {
+            background: #3a3b3c;
+            color: #e4e6eb;
+        }
+        .btn-cancel:hover {
+            background: #d8dadf;
+        }
+
+        #messages::-webkit-scrollbar {
+            width: 8px;
+        }
+        #messages::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        #messages::-webkit-scrollbar-thumb {
+            background: #bcc0c4;
+            border-radius: 4px;
+        }
+        body.dark-mode #messages::-webkit-scrollbar-thumb {
+            background: #4e4f50;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎌 MangaHub Chat<span id="roomDisplay">(General)</span></h1>
+            <div class="header-right">
+                <button class="dark-mode-toggle" onclick="toggleDarkMode()" title="Toggle Dark Mode">🌙</button>
+                <div class="online-count">👥 <span id="onlineCount">0</span> online</div>
+            </div>
+        </div>
+
+        <!-- Login Screen -->
+        <div id="login-screen">
+            <h2>Welcome to MangaHub Chat!</h2>
+            <p style="color: #666; margin: 10px 0;">Join a room to discuss your favorite manga</p>
+            <input type="text" id="usernameInput" placeholder="Enter your username" maxlength="20">
+            
+            <select id="roomSelect">
+                <option value="general">General Discussion</option>
+                <option value="one-piece">One Piece</option>
+                <option value="naruto">Naruto</option>
+                <option value="attack-on-titan">Attack on Titan</option>
+                <option value="demon-slayer">Demon Slayer</option>
+                <option value="jujutsu-kaisen">Jujutsu Kaisen</option>
+                <option value="my-hero-academia">My Hero Academia</option>
+                <option value="dragon-ball">Dragon Ball</option>
+            </select>
+            
+            <button onclick="joinChat()">Join Room</button>
+        </div>
+
+        <!-- Chat Screen -->
+        <div id="chat-screen">
+            <div id="messages"></div>
+            <div id="typing-indicator">
+                <span id="typing-user"></span> is typing<span class="typing-dots"><span></span><span></span><span></span></span>
+            </div>
+            <div class="input-area">
+                <input type="text" id="messageInput" placeholder="Type a message..." maxlength="200">
+                <button class="btn-send" onclick="sendMessage()">Send</button>
+                <button class="btn-leave" onclick="showLeaveConfirmation()">Leave</button>
+            </div>
+        </div>
+
+        <div class="status" id="status">Enter your username to join</div>
+    </div>
+
+    <div id="leaveModal" class="modal">
+        <div class="modal-content">
+            <h2>Leave Chat?</h2>
+            <p>Are you sure you want to leave the chat room?</p>
+            <div class="modal-buttons">
+                <button class="btn-confirm" onclick="confirmLeave()">Yes, Leave</button>
+                <button class="btn-cancel" onclick="cancelLeave()">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let ws = null;
+        let username = "";
+        let currentRoom = "general";
+        let shouldReconnect = false;
+        let typingTimeout;
+        let isTyping = false;
+
+        function toggleDarkMode() {
+            document.body.classList.toggle('dark-mode');
+            localStorage.setItem('darkMode', document.body.classList.contains('dark-mode'));
+            document.querySelector('.dark-mode-toggle').textContent = document.body.classList.contains('dark-mode') ? '☀️' : '🌙';
+        }
+
+        if (localStorage.getItem('darkMode') === 'true') {
+            document.body.classList.add('dark-mode');
+            document.querySelector('.dark-mode-toggle').textContent = '☀️';
+        }
+
+        function joinChat() {
+            username = document.getElementById('usernameInput').value.trim();
+            currentRoom = document.getElementById('roomSelect').value || "general";
+
+            if (!username) {
+                alert('Please enter a username');
+                return;
+            }
+
+            const roomName = currentRoom.charAt(0).toUpperCase() + currentRoom.slice(1).replace(/-/g, ' ');
+            document.getElementById('roomDisplay').textContent = `(${roomName})`;
+
+            shouldReconnect = true;
+            connectWebSocket();
+        }
+
+        function connectWebSocket() {
+            //const url = `ws://localhost:9093/ws?username=${encodeURIComponent(username)}&room=${encodeURIComponent(currentRoom)}`;
+            const url = `${window.location.protocol === 'https:' ? 'wss' : 'ws'}://${window.location.host}/ws?username=${encodeURIComponent(username)}&room=${encodeURIComponent(currentRoom)}`;
+            ws = new WebSocket(url);
+
+            ws.onopen = function() {
+                document.getElementById('login-screen').style.display = 'none';
+                document.getElementById('chat-screen').style.display = 'flex';
+                updateStatus('Connected', true);
+                updateOnlineCount();
+            };
+
+            ws.onmessage = function(event) {
+                try {
+                    const msg = JSON.parse(event.data);
+                    if (msg.type === 'typing') {
+                        showTypingIndicator(msg.username);
+                    } else {
+                        displayMessage(msg);
+                    }
+                } catch (e) {
+                    console.log('Non-JSON:', event.data);
+                }
+            };
+
+            ws.onclose = function() {
+                updateStatus('Disconnected', false);
+                document.getElementById('typing-indicator').style.display = 'none';
+                if (shouldReconnect) {
+                    setTimeout(connectWebSocket, 3000);
+                }
+            };
+        }
+
+        function sendMessage() {
+            const input = document.getElementById('messageInput');
+            const text = input.value.trim();
+            if (text && ws && ws.readyState === WebSocket.OPEN) {
+                const msg = {
+                    type: "chat",
+                    text: text,
+                    room: currentRoom
+                };
+                ws.send(JSON.stringify(msg));
+                input.value = '';
+                isTyping = false;
+            }
+        }
+
+        function displayMessage(msg) {
+            const messagesDiv = document.getElementById('messages');
+            const wrapper = document.createElement('div');
+            const isOwn = msg.username === username;
+
+            if (msg.type === 'system') {
+                wrapper.className = 'message-wrapper system';
+                wrapper.innerHTML = `<div class="message">${escapeHtml(msg.text)}</div>`;
+            } else if (msg.type === 'chat' && msg.text) {
+                wrapper.className = 'message-wrapper ' + (isOwn ? 'own' : 'other');
+                wrapper.innerHTML = `
+                    <div class="message">
+                        <span class="username" style="color: ${getColorForUser(msg.username)}">${escapeHtml(msg.username)}</span>
+                        <div class="text">${escapeHtml(msg.text)}</div>
+                        <span class="time">${msg.time || ''}</span>
+                    </div>
+                `;
+            }
+
+            messagesDiv.appendChild(wrapper);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+
+        function showTypingIndicator(user) {
+            if (user !== username) {
+                document.getElementById('typing-user').textContent = user;
+                document.getElementById('typing-indicator').style.display = 'block';
+                clearTimeout(typingTimeout);
+                typingTimeout = setTimeout(() => {
+                    document.getElementById('typing-indicator').style.display = 'none';
+                }, 7000);
+            }
+        }
+
+        function getColorForUser(username) {
+            let hash = 0;
+            for (let i = 0; i < username.length; i++) {
+                hash = username.charCodeAt(i) + ((hash << 5) - hash);
+            }
+            const colors = ['#667eea', '#f093fb', '#4facfe', '#43e97b', '#fa709a', '#feca57', '#ff6b6b', '#4ecdc4'];
+            return colors[Math.abs(hash) % colors.length];
+        }
+
+        function showLeaveConfirmation() {
+            document.getElementById('leaveModal').style.display = 'block';
+        }
+
+        function confirmLeave() {
+            shouldReconnect = false;
+            document.getElementById('leaveModal').style.display = 'none';
+            leaveChat();
+        }
+
+        function cancelLeave() {
+            document.getElementById('leaveModal').style.display = 'none';
+        }
+
+        function leaveChat() {
+            if (ws) ws.close();
+            document.getElementById('login-screen').style.display = 'flex';
+            document.getElementById('chat-screen').style.display = 'none';
+            document.getElementById('messages').innerHTML = '';
+            updateStatus('Enter your username to join', null);
+        }
+
+        function updateStatus(text, connected) {
+            const statusDiv = document.getElementById('status');
+            statusDiv.textContent = text;
+            statusDiv.className = 'status ' + (connected === true ? 'connected' : connected === false ? 'disconnected' : '');
+        }
+
+        function updateOnlineCount() {
+            fetch('/stats')
+                .then(r => r.json())
+                .then(data => {
+                    document.getElementById('onlineCount').textContent = data.online_users || 0;
+                })
+                .catch(() => {});
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // SINGLE DOMContentLoaded — ALL EVENT LISTENERS HERE
+        document.addEventListener('DOMContentLoaded', () => {
+            const messageInput = document.getElementById('messageInput');
+            if (messageInput) {
+                messageInput.addEventListener('input', function() {
+                    if (ws && ws.readyState === WebSocket.OPEN && this.value.trim() && !isTyping) {
+                        ws.send(JSON.stringify({
+                            type: 'typing',
+                            username: username,
+                            room: currentRoom
+                        }));
+                        isTyping = true;
+                    } else if (!this.value.trim()) {
+                        isTyping = false;
+                    }
+                });
+
+                messageInput.addEventListener('keypress', e => {
+                    if (e.key === 'Enter') {
+                        sendMessage();
+                    }
+                });
+            }
+
+            document.getElementById('usernameInput')?.addEventListener('keypress', e => {
+                if (e.key === 'Enter') {
+                    joinChat();
+                }
+            });
+
+            setInterval(updateOnlineCount, 5000);
+        });
+
+        window.onclick = event => {
+            const modal = document.getElementById('leaveModal');
+            if (event.target === modal) modal.style.display = 'none';
+        };
+    </script>
+</body>
+</html>

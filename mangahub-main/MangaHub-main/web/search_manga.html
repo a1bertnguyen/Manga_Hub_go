@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MangaHub - Live Demo</title>
+    
+    <!-- Preload both backgrounds for instant switching -->
+    <link rel="preload" as="image" href="https://i.ebayimg.com/images/g/c3cAAOSwVsRmDZh6/s-l1200.png">
+    <link rel="preload" as="image" href="https://static0.colliderimages.com/wordpress/wp-content/uploads/2023/10/jujutsu-kaisen-poster.jpg">
+    
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            min-height: 100vh;
+            color: white;
+            background: #0f0f1e center center fixed no-repeat;
+            background-size: cover;
+            transition: background-image 0.5s ease-in-out;
+        }
+        body.main-bg {
+            background-image: url('https://i.ebayimg.com/images/g/c3cAAOSwVsRmDZh6/s-l1200.png');
+        }
+        body.section-bg {
+            background-image: url('https://static0.colliderimages.com/wordpress/wp-content/uploads/2023/10/jujutsu-kaisen-poster.jpg');
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            text-align: center;
+        }
+        h1 {
+            font-size: 4.5em;
+            margin: 80px 0 40px;
+            text-shadow: 0 0 40px rgba(0,0,0,0.8);
+            color: white;
+        }
+        .main-menu {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 35px;
+            margin-top: 120px;
+        }
+        .main-menu button {
+            padding: 28px 120px;
+            font-size: 2.4em;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            border: none;
+            border-radius: 25px;
+            color: white;
+            cursor: pointer;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+            transition: all 0.4s;
+            width: 75%;
+            max-width: 800px;
+        }
+        .main-menu button:hover {
+            transform: translateY(-20px);
+            box-shadow: 0 35px 80px rgba(0,0,0,0.7);
+        }
+        .section {
+            display: none;
+            background: rgba(0,0,0,0.75);
+            padding: 70px;
+            border-radius: 35px;
+            margin: 80px auto;
+            max-width: 1100px;
+            box-shadow: 0 30px 80px rgba(0,0,0,0.7);
+        }
+        .section.active { display: block; }
+        .back-btn {
+            padding: 15px 35px;
+            background: #dc3545;
+            margin-bottom: 50px;
+            font-size: 1.5em;
+            border-radius: 15px;
+        }
+        .form-row {
+            display: flex;
+            flex-direction: column;
+            gap: 30px;
+            margin: 50px 0;
+        }
+        input, select {
+            padding: 22px;
+            border-radius: 18px;
+            border: none;
+            font-size: 20px;
+            background: rgba(255,255,255,0.95);
+            color: #333;
+        }
+        button:not(.back-btn) {
+            padding: 22px 60px;
+            background: #667eea;
+            font-size: 1.8em;
+            margin-top: 30px;
+            border-radius: 18px;
+        }
+        .result {
+            margin-top: 60px;
+            padding: 50px;
+            background: rgba(255,255,255,0.15);
+            border-radius: 25px;
+            min-height: 150px;
+        }
+        .manga-card {
+            background: rgba(255,255,255,0.25);
+            padding: 35px;
+            margin: 30px 0;
+            border-radius: 25px;
+            text-align: left;
+            border-left: 10px solid #667eea;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+        .manga-info {
+            flex: 1;
+            min-width: 300px;
+        }
+        .manga-card h3 { font-size: 2.5em; margin-bottom: 20px; }
+        .progress-controls {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        .progress-controls input[type="number"] {
+            width: 120px;
+            padding: 15px;
+        }
+        .progress-controls button {
+            padding: 15px 30px;
+            font-size: 1.4em;
+            margin: 0;
+        }
+        .success { color: #28a745; font-size: 2em; }
+        .error { color: #dc3545; font-size: 2em; }
+        .loading { color: #667eea; font-style: italic; font-size: 1.8em; }
+    </style>
+</head>
+<body class="main-bg">
+    <div class="container">
+        <h1>🎌 MangaHub</h1>
+
+        <!-- Main Menu -->
+        <div id="main-menu" class="main-menu">
+            <button onclick="showSection('register')">📝 Register</button>
+            <button onclick="showSection('login')">🔐 Login</button>
+            <button onclick="showSection('search')">🔍 Search Manga</button>
+            <button onclick="showSection('library')">📚 My Library</button>
+        </div>
+
+        <!-- Register Section -->
+        <div id="register" class="section">
+            <button class="back-btn" onclick="showMain()">← Back to Menu</button>
+            <h2>📝 Register New User</h2>
+            <div class="form-row">
+                <input type="text" id="reg_username" placeholder="Username">
+                <input type="email" id="reg_email" placeholder="Email">
+                <input type="password" id="reg_password" placeholder="Password">
+                <button onclick="register()">Register</button>
+            </div>
+            <div class="result" id="register_result"></div>
+        </div>
+
+        <!-- Login Section -->
+        <div id="login" class="section">
+            <button class="back-btn" onclick="showMain()">← Back to Menu</button>
+            <h2>🔐 Login</h2>
+            <div class="form-row">
+                <input type="text" id="login_username" placeholder="Username">
+                <input type="password" id="login_password" placeholder="Password">
+                <button onclick="login()">Login</button>
+            </div>
+            <div class="result" id="login_result"></div>
+        </div>
+
+        <!-- Search Section with Author & Status -->
+        <div id="search" class="section">
+            <button class="back-btn" onclick="showMain()">← Back to Menu</button>
+            <h2>🔍 Advanced Manga Search</h2>
+            <div class="form-row">
+                <input type="text" id="search_title" placeholder="Title">
+                <input type="text" id="search_author" placeholder="Author">
+                <input type="text" id="search_genre" placeholder="Genre">
+                <select id="search_status">
+                    <option value="">All Status</option>
+                    <option value="ongoing">Ongoing</option>
+                    <option value="completed">Completed</option>
+                </select>
+                <button onclick="searchManga()">Search</button>
+            </div>
+            <div class="result" id="search_result"></div>
+        </div>
+
+        <!-- Library Section with Chapter Update -->
+        <div id="library" class="section">
+            <button class="back-btn" onclick="showMain()">← Back to Menu</button>
+            <h2>📚 My Library</h2>
+            <button onclick="getLibrary()" style="margin-bottom:50px;">Refresh Library</button>
+            <div class="form-row">
+                <input type="text" id="add_manga_id" placeholder="Manga ID (from search)">
+                <select id="add_status">
+                    <option value="reading">Reading</option>
+                    <option value="completed">Completed</option>
+                    <option value="plan_to_read">Plan to Read</option>
+                </select>
+                <button onclick="addToLibrary()">Add to Library</button>
+            </div>
+            <div class="result" id="add_result"></div>
+            <div class="result" id="library_result"></div>
+        </div>
+    </div>
+
+    <script>
+        let token = localStorage.getItem('mangahub_token') || '';
+        const API_URL = '';
+
+        function escapeHtml(text) {
+            if (text === null || text === undefined) return '';
+            text = text.toString();
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+        
+        function showMain() {
+            document.getElementById('main-menu').style.display = 'flex';
+            document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+            document.body.classList.remove('section-bg');
+            document.body.classList.add('main-bg');
+        }
+
+        function showSection(id) {
+            document.getElementById('main-menu').style.display = 'none';
+            document.getElementById(id).classList.add('active');
+            document.body.classList.remove('main-bg');
+            document.body.classList.add('section-bg');
+        }
+
+        function setResult(id, html) {
+            document.getElementById(id).innerHTML = html;
+        }
+
+        async function register() {
+            const username = document.getElementById('reg_username').value.trim();
+            const email = document.getElementById('reg_email').value.trim();
+            const password = document.getElementById('reg_password').value;
+
+            if (!username || !email || !password) return setResult('register_result', '<p class="error">❌ All fields required</p>');
+
+            setResult('register_result', '<p class="loading">Registering...</p>');
+
+            try {
+                const res = await fetch(`${API_URL}/auth/register`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({username, email, password})
+                });
+                const data = await res.json();
+                res.ok ? setResult('register_result', `<p class="success">✅ Registered successfully!</p>`) 
+                       : setResult('register_result', `<p class="error">❌ ${data.error}</p>`);
+            } catch (err) {
+                setResult('register_result', '<p class="error">❌ Network error</p>');
+            }
+        }
+
+        async function login() {
+            const username = document.getElementById('login_username').value.trim();
+            const password = document.getElementById('login_password').value;
+
+            if (!username || !password) return setResult('login_result', '<p class="error">❌ Fill both fields</p>');
+
+            setResult('login_result', '<p class="loading">Logging in...</p>');
+
+            try {
+                const res = await fetch(`${API_URL}/auth/login`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({username, password})
+                });
+                const data = await res.json();
+
+                if (res.ok) {
+                    token = data.token;
+                    localStorage.setItem('mangahub_token', token);
+                    setResult('login_result', `<p class="success">✅ Welcome ${data.username}!</p>`);
+                } else {
+                    setResult('login_result', `<p class="error">❌ ${data.error}</p>`);
+                }
+            } catch (err) {
+                setResult('login_result', '<p class="error">❌ Network error</p>');
+            }
+        }
+
+        async function searchManga() {
+            if (!token) return alert('Please login first!');
+
+            const title = document.getElementById('search_title').value.trim();
+            const author = document.getElementById('search_author').value.trim();
+            const genre = document.getElementById('search_genre').value.trim();
+            const status = document.getElementById('search_status').value;
+
+            let url = `${API_URL}/manga?`;
+            if (title) url += `title=${encodeURIComponent(title)}&`;
+            if (author) url += `author=${encodeURIComponent(author)}&`;
+            if (genre) url += `genre=${encodeURIComponent(genre)}&`;
+            if (status) url += `status=${status}`;
+
+            // Remove trailing & if exists
+            if (url.endsWith('&')) url = url.slice(0, -1);
+            if (url.endsWith('?')) url = `${API_URL}/manga`; // if no params
+
+            setResult('search_result', '<p class="loading">Searching...</p>');
+
+            try {
+                const res = await fetch(url, { 
+                    headers: {'Authorization': `Bearer ${token}`} 
+                });
+                const data = await res.json();
+
+                if (!res.ok) {
+                    setResult('search_result', `<p class="error">❌ ${data.error || 'Request failed'}</p>`);
+                    return;
+                }
+
+                const mangaList = data.manga || [];  // ← Correct field name
+                const count = data.count || 0;
+
+                if (count === 0) {
+                    setResult('search_result', '<p>No results found.</p>');
+                    return;
+                }
+
+                let html = `<p class="success">✅ Found ${count} manga:</p>`;
+                mangaList.forEach(m => {
+                    html += `
+                        <div class="manga-card">
+                            <div class="manga-info">
+                                <h3>${escapeHtml(m.title || 'Unknown Title')}</h3>
+                                <p><strong>Author:</strong> ${escapeHtml(m.author || 'Unknown')}</p>
+                                <p><strong>Genres:</strong> ${m.genres?.join(', ') || 'None'}</p>
+                                <p><strong>Status:</strong> ${m.status || 'Unknown'} | <strong>Chapters:</strong> ${m.total_chapters || 0}</p>
+                                <p><strong>Description:</strong> ${escapeHtml(m.description || 'No description')}</p>
+                            </div>
+                            <div class="progress-controls">
+                                <p><strong>ID:</strong> <code>${m.id}</code></p>
+                                <small>Use this ID to add to library</small>
+                            </div>
+                        </div>`;
+                });
+
+                setResult('search_result', html);
+
+            } catch (err) {
+                console.error("Search error:", err);
+                setResult('search_result', '<p class="error">❌ Network or parsing error</p>');
+            }
+        }
+
+        async function getLibrary() {
+            if (!token) return alert('Login first!');
+            setResult('library_result', '<p class="loading">Loading library...</p>');
+            try {
+                const res = await fetch(`${API_URL}/users/library`, { headers: {'Authorization': `Bearer ${token}`} });
+                const data = await res.json();
+                if (res.ok && data.library?.length > 0) {
+                    let html = `<p class="success">Your Library (${data.count} items):</p>`;
+                    data.library.forEach(item => {
+                        html += `
+                            <div class="manga-card">
+                                <div class="manga-info">
+                                    <h3>${item.title}</h3>
+                                    <p><strong>Status:</strong> ${item.status}</p>
+                                    <p><strong>Progress:</strong> Chapter ${item.current_chapter || 0}</p>
+                                </div>
+                                <div class="progress-controls">
+                                    <input type="number" id="chapter-${item.manga_id}" placeholder="New chapter" min="0" value="${item.current_chapter || 0}">
+                                    <button onclick="updateChapter('${item.manga_id}')">Update Chapter</button>
+                                </div>
+                            </div>`;
+                    });
+                    setResult('library_result', html);
+                } else {
+                    setResult('library_result', '<p>Your library is empty. Add some manga!</p>');
+                }
+            } catch (err) {
+                setResult('library_result', '<p class="error">❌ Error loading library</p>');
+            }
+        }
+
+        async function addToLibrary() {
+            if (!token) return alert('Login first!');
+            const manga_id = document.getElementById('add_manga_id').value.trim();
+            const status = document.getElementById('add_status').value;
+            if (!manga_id) return setResult('add_result', '<p class="error">Enter Manga ID</p>');
+
+            setResult('add_result', '<p class="loading">Adding...</p>');
+            try {
+                const res = await fetch(`${API_URL}/users/library`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json', 'Authorization': `Bearer ${token}`},
+                    body: JSON.stringify({manga_id, status})
+                });
+                const data = await res.json();
+                res.ok ? setResult('add_result', `<p class="success">✅ Added to library!</p>`) 
+                       : setResult('add_result', `<p class="error">❌ ${data.error}</p>`);
+                getLibrary(); // Refresh
+            } catch (err) {
+                setResult('add_result', '<p class="error">❌ Error</p>');
+            }
+        }
+
+       async function updateChapter(manga_id) {
+    if (!token) return alert('Login first!');
+    const input = document.getElementById(`chapter-${manga_id}`);
+    const chapter = parseInt(input.value);
+    if (isNaN(chapter) || chapter < 0) {
+        alert('Please enter a valid chapter number (0 or higher)');
+        return;
+    }
+
+    try {
+        const res = await fetch(`${API_URL}/users/progress`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({
+                manga_id: manga_id,
+                current_chapter: chapter
+                // ← We do NOT send "status" here anymore
+            })
+        });
+        const data = await res.json();
+        if (res.ok) {
+            alert('Chapter updated successfully!');
+            getLibrary(); // Refresh to show new chapter
+        } else {
+            alert('Error: ' + (data.error || 'Failed to update'));
+        }
+    } catch (err) {
+        alert('Network error: ' + err.message);
+    }
+}
+
+        window.onload = showMain;
+    </script>
+</body>
+</html>

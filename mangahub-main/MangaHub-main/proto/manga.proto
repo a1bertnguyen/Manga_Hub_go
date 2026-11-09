@@ -1,0 +1,53 @@
+syntax = "proto3";
+
+package manga;
+
+option go_package = "mangahub/proto";
+
+// Manga message
+message Manga {
+  string id = 1;
+  string title = 2;
+  string author = 3;
+  repeated string genres = 4;
+  string status = 5;
+  int32 total_chapters = 6;
+  string description = 7;
+}
+
+// Request messages
+message GetMangaRequest {
+  string id = 1;
+}
+
+message GetMangaResponse {
+  Manga manga = 1;
+}
+
+message SearchMangaRequest {
+  string query = 1;
+  string genre = 2;
+}
+
+message SearchMangaResponse {
+  repeated Manga mangas = 1;
+  int32 count = 2;
+}
+
+message UpdateProgressRequest {
+  string user_id = 1;
+  string manga_id = 2;
+  int32 current_chapter = 3;
+}
+
+message UpdateProgressResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+// MangaService - Internal service for manga operations
+service MangaService {
+  rpc GetManga(GetMangaRequest) returns (GetMangaResponse);
+  rpc SearchManga(SearchMangaRequest) returns (SearchMangaResponse);
+  rpc UpdateProgress(UpdateProgressRequest) returns (UpdateProgressResponse);
+}
