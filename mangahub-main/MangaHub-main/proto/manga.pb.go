@@ -466,7 +466,7 @@ func file_proto_manga_proto_rawDescGZIP() []byte {
 	return file_proto_manga_proto_rawDescData
 }
 
-var file_proto_manga_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
+var file_proto_manga_proto_msgTypes = make([]protoimpl.MessageInfo, 9)
 var file_proto_manga_proto_goTypes = []any{
 	(*Manga)(nil),                  // 0: manga.Manga
 	(*GetMangaRequest)(nil),        // 1: manga.GetMangaRequest
@@ -475,6 +475,8 @@ var file_proto_manga_proto_goTypes = []any{
 	(*SearchMangaResponse)(nil),    // 4: manga.SearchMangaResponse
 	(*UpdateProgressRequest)(nil),  // 5: manga.UpdateProgressRequest
 	(*UpdateProgressResponse)(nil), // 6: manga.UpdateProgressResponse
+	(*UpdateChaptersRequest)(nil),  // 7: manga.UpdateChaptersRequest
+	(*UpdateChaptersResponse)(nil), // 8: manga.UpdateChaptersResponse
 }
 var file_proto_manga_proto_depIdxs = []int32{
 	0, // 0: manga.GetMangaResponse.manga:type_name -> manga.Manga
@@ -492,6 +494,102 @@ var file_proto_manga_proto_depIdxs = []int32{
 	0, // [0:2] is the sub-list for field type_name
 }
 
+type UpdateChaptersRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	TotalChapters int32                  `protobuf:"varint,2,opt,name=total_chapters,json=totalChapters,proto3" json:"total_chapters,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UpdateChaptersRequest) Reset() {
+	*x = UpdateChaptersRequest{}
+}
+
+func (x *UpdateChaptersRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_manga_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+func (x *UpdateChaptersRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UpdateChaptersRequest) ProtoMessage() {}
+
+func (x *UpdateChaptersRequest) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *UpdateChaptersRequest) GetTotalChapters() int32 {
+	if x != nil {
+		return x.TotalChapters
+	}
+	return 0
+}
+
+type UpdateChaptersResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Success       bool                   `protobuf:"varint,1,opt,name=success,proto3" json:"success,omitempty"`
+	Message       string                 `protobuf:"bytes,2,opt,name=message,proto3" json:"message,omitempty"`
+	TotalChapters int32                  `protobuf:"varint,3,opt,name=total_chapters,json=totalChapters,proto3" json:"total_chapters,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UpdateChaptersResponse) Reset() {
+	*x = UpdateChaptersResponse{}
+}
+
+func (x *UpdateChaptersResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_manga_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+func (x *UpdateChaptersResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UpdateChaptersResponse) ProtoMessage() {}
+
+func (x *UpdateChaptersResponse) GetSuccess() bool {
+	if x != nil {
+		return x.Success
+	}
+	return false
+}
+
+func (x *UpdateChaptersResponse) GetMessage() string {
+	if x != nil {
+		return x.Message
+	}
+	return ""
+}
+
+func (x *UpdateChaptersResponse) GetTotalChapters() int32 {
+	if x != nil {
+		return x.TotalChapters
+	}
+	return 0
+}
+
 func init() { file_proto_manga_proto_init() }
 func file_proto_manga_proto_init() {
 	if File_proto_manga_proto != nil {
@@ -503,7 +601,7 @@ func file_proto_manga_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_proto_manga_proto_rawDesc), len(file_proto_manga_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   7,
+			NumMessages:   9,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

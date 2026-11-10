@@ -45,9 +45,21 @@ message UpdateProgressResponse {
   string message = 2;
 }
 
+message UpdateChaptersRequest {
+  string id = 1;
+  int32 total_chapters = 2;
+}
+
+message UpdateChaptersResponse {
+  bool success = 1;
+  string message = 2;
+  int32 total_chapters = 3;
+}
+
 // MangaService - Internal service for manga operations
 service MangaService {
   rpc GetManga(GetMangaRequest) returns (GetMangaResponse);
   rpc SearchManga(SearchMangaRequest) returns (SearchMangaResponse);
   rpc UpdateProgress(UpdateProgressRequest) returns (UpdateProgressResponse);
+  rpc UpdateChapters(UpdateChaptersRequest) returns (UpdateChaptersResponse);
 }

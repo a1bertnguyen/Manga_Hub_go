@@ -18,67 +18,91 @@ type ClientAddr struct {
 
 // Hub manages all UDP subscribers and broadcasts
 type Hub struct {
-	clients   map[string]*ClientAddr
-	broadcast chan []byte // Channel for outgoing messages
-	Register  chan *ClientAddr // Channel for new/updated clients
-	mu        sync.RWMutex
+	clients    map[string]*ClientAddr
+	broadcast  chan []byte
+	Register   chan *ClientAddr
+	Unregister chan *ClientAddr
+	mu         sync.RWMutex
 }
 
 var GlobalHub = &Hub{
-	// Initialize client storage, chanel
-	clients:   make(map[string]*ClientAddr),
-	broadcast: make(chan []byte),
-	Register:  make(chan *ClientAddr),
+	clients:    make(map[string]*ClientAddr),
+	broadcast:  make(chan []byte, 256),
+	Register:   make(chan *ClientAddr),
+	Unregister: make(chan *ClientAddr),
 }
 
 func (h *Hub) Run() {
-	// Ticker for cleaning up inactive clients
 	ticker := time.NewTicker(10 * time.Second)
 	defer ticker.Stop()
 
 	for {
 		select {
-		// Handle new client registration
 		case client := <-h.Register:
 			key := client.Addr.String()
 			h.mu.Lock()
 			if old, exists := h.clients[key]; exists {
-				old.LastSeen = time.Now() // Update heartbeat if client already exists
+				old.LastSeen = time.Now()
 			} else {
-				// Register new UDP subscriber
 				h.clients[key] = client
-				log.Printf("UDP CLIENT SUBSCRIBED: %s (Total: %d)", key, len(h.clients))
+				log.Printf("[UDP Hub] Subscriber registered: %s (Total: %d)", key, len(h.clients))
 			}
 			h.mu.Unlock()
 
-		// Broadcast message to all registered clients
+		case client := <-h.Unregister:
+			key := client.Addr.String()
+			h.mu.Lock()
+			if _, exists := h.clients[key]; exists {
+				delete(h.clients, key)
+				log.Printf("[UDP Hub] Subscriber unregistered: %s (Remaining: %d)", key, len(h.clients))
+			}
+			h.mu.Unlock()
+
 		case message := <-h.broadcast:
 			h.mu.RLock()
 			for key, client := range h.clients {
-				// Send UDP packet to client address
 				_, err := udpConn.WriteToUDP(message, client.Addr)
 				if err != nil {
-					log.Printf("UDP send failed to %s: %v", key, err)
+					log.Printf("[UDP Hub] UDP send failed to %s: %v", key, err)
 				} else {
-					client.LastSeen = time.Now() // Update activity timestamp
+					client.LastSeen = time.Now()
 				}
 			}
 			h.mu.RUnlock()
 
-		// Periodic cleanup of inactive clients
 		case <-ticker.C:
 			h.mu.Lock()
 			now := time.Now()
 			for key, client := range h.clients {
-				// Remove clients inactive for over 30 seconds
-				if now.Sub(client.LastSeen) > 30*time.Second {
+				if now.Sub(client.LastSeen) > 60*time.Second {
 					delete(h.clients, key)
-					log.Printf("UDP CLIENT TIMED OUT: %s (Remaining: %d)", key, len(h.clients))
+					log.Printf("[UDP Hub] Subscriber timed out: %s (Remaining: %d)", key, len(h.clients))
 				}
 			}
 			h.mu.Unlock()
 		}
 	}
+}
+
+// BroadcastChapterRelease broadcasts a new chapter release notification to all registered UDP subscribers.
+// Message format matches the specification: {"type":"new_chapter","manga_id":"one-piece","chapter":26,...}
+func (h *Hub) BroadcastChapterRelease(mangaID, mangaTitle string, chapter int) {
+	msg := map[string]interface{}{
+		"type":        "new_chapter",
+		"manga_id":    mangaID,
+		"manga_title": mangaTitle,
+		"chapter":     chapter,
+		"timestamp":   time.Now().Unix(),
+	}
+
+	data, err := json.Marshal(msg)
+	if err != nil {
+		log.Printf("[UDP Hub] Marshal error: %v", err)
+		return
+	}
+
+	log.Printf("[UDP Hub] Broadcasting new chapter alert to %d subscribers: %s Ch.%d", h.GetClientCount(), mangaTitle, chapter)
+	h.broadcast <- append(data, '\n')
 }
 
 func (h *Hub) BroadcastProgress(update models.UserProgress, username, mangaTitle string) {

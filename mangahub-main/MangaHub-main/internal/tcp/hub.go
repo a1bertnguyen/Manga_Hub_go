@@ -7,7 +7,6 @@ import (
 	"sync"
 	"time"
 
-	"mangahub/internal/shared"
 	"mangahub/pkg/models"
 )
 
@@ -17,9 +16,14 @@ type Client struct {
 	Send   chan []byte
 }
 
+type UserBroadcast struct {
+	UserID  string
+	Message []byte
+}
+
 type Hub struct {
 	clients    map[*Client]bool
-	broadcast  chan []byte
+	broadcast  chan UserBroadcast
 	Register   chan *Client
 	Unregister chan *Client
 	mu         sync.RWMutex
@@ -27,7 +31,7 @@ type Hub struct {
 
 var GlobalHub = &Hub{
 	clients:    make(map[*Client]bool),
-	broadcast:  make(chan []byte),
+	broadcast:  make(chan UserBroadcast, 256),
 	Register:   make(chan *Client),
 	Unregister: make(chan *Client),
 }
@@ -40,26 +44,30 @@ func (h *Hub) Run() {
 			h.clients[client] = true
 			count := len(h.clients)
 			h.mu.Unlock()
-			log.Printf("TCP CLIENT REGISTERED IN HUB: UserID %s from %s — Total clients: %d", client.UserID, client.Conn.RemoteAddr().String(), count)
+			log.Printf("[TCP Hub] Client registered: UserID=%s from %s (Total clients: %d)",
+				client.UserID, client.Conn.RemoteAddr().String(), count)
 
 		case client := <-h.Unregister:
 			h.mu.Lock()
 			if _, ok := h.clients[client]; ok {
 				delete(h.clients, client)
 				close(client.Send)
-				log.Printf("TCP CLIENT DISCONNECTED: UserID %s from %s — Remaining clients: %d",
-					client.UserID, client.Conn.RemoteAddr(), len(h.clients))
+				log.Printf("[TCP Hub] Client disconnected: UserID=%s from %s (Remaining: %d)",
+					client.UserID, client.Conn.RemoteAddr().String(), len(h.clients))
 			}
 			h.mu.Unlock()
 
-		case message := <-h.broadcast:
+		case ub := <-h.broadcast:
 			h.mu.RLock()
 			for client := range h.clients {
-				select {
-				case client.Send <- message:
-				default:
-					close(client.Send)
-					delete(h.clients, client)
+				// User Isolation: only send to clients that belong to the SAME UserID
+				if client.UserID == ub.UserID {
+					select {
+					case client.Send <- ub.Message:
+					default:
+						close(client.Send)
+						delete(h.clients, client)
+					}
 				}
 			}
 			h.mu.RUnlock()
@@ -67,30 +75,31 @@ func (h *Hub) Run() {
 	}
 }
 
-// BroadcastProgress sends a reading progress update to all connected TCP clients.
-// Parameters:
-//   update      - the user's progress data (chapter, status)
-//   username    - display name of the user
-//   mangaTitle  - title of the manga being read
-// This is used when a user updates their reading progress via the API.
+// BroadcastProgress sends a reading progress update ONLY to connected TCP clients of the same user.
+// Framing: One JSON object per newline as required by the specification.
 func (h *Hub) BroadcastProgress(update models.UserProgress, username, mangaTitle string) {
-	msg := shared.ProgressUpdate{
-		UserID:         update.UserID,
-		Username:       username,
-		MangaID:        update.MangaID,
-		MangaTitle:     mangaTitle,
-		CurrentChapter: update.CurrentChapter,
-		Status:         update.Status,
-		Timestamp:      time.Now().Unix(),
+	msg := map[string]interface{}{
+		"type":        "progress_updated",
+		"user_id":     update.UserID,
+		"username":    username,
+		"manga_id":    update.MangaID,
+		"manga_title": mangaTitle,
+		"chapter":     update.CurrentChapter,
+		"status":      update.Status,
+		"version":     update.Version,
+		"timestamp":   time.Now().Unix(),
 	}
 
 	data, err := json.Marshal(msg)
 	if err != nil {
-		log.Println("Error marshaling progress update:", err)
+		log.Printf("[TCP Hub] Error marshaling progress update: %v", err)
 		return
 	}
 
-	h.broadcast <- data
+	h.broadcast <- UserBroadcast{
+		UserID:  update.UserID,
+		Message: data,
+	}
 }
 
 func (h *Hub) GetClientCount() int {

@@ -140,3 +140,40 @@ func (s *MangaServiceServer) UpdateProgress(ctx context.Context, req *pb.UpdateP
 		Message: "Progress updated successfully",
 	}, nil
 }
+
+// UpdateChapters updates the total chapters of a manga series (e.g. when a new chapter is released)
+func (s *MangaServiceServer) UpdateChapters(ctx context.Context, req *pb.UpdateChaptersRequest) (*pb.UpdateChaptersResponse, error) {
+	log.Printf("gRPC UpdateChapters called: id=%s, total_chapters=%d", req.Id, req.TotalChapters)
+
+	if req.Id == "" {
+		return nil, status.Error(codes.InvalidArgument, "id is required")
+	}
+	if req.TotalChapters < 0 {
+		return nil, status.Error(codes.InvalidArgument, "total_chapters must be non-negative")
+	}
+
+	var exists bool
+	err := s.db.QueryRowContext(ctx, "SELECT EXISTS(SELECT 1 FROM manga WHERE id = ?)", req.Id).Scan(&exists)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "database error: %v", err)
+	}
+	if !exists {
+		return nil, status.Errorf(codes.NotFound, "manga not found: id=%s", req.Id)
+	}
+
+	res, err := s.db.ExecContext(ctx, "UPDATE manga SET total_chapters = ? WHERE id = ?", req.TotalChapters, req.Id)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to update chapters: %v", err)
+	}
+
+	rowsAffected, _ := res.RowsAffected()
+	if rowsAffected == 0 {
+		return nil, status.Errorf(codes.NotFound, "manga not found: id=%s", req.Id)
+	}
+
+	return &pb.UpdateChaptersResponse{
+		Success:       true,
+		Message:       "Chapters updated successfully",
+		TotalChapters: req.TotalChapters,
+	}, nil
+}
