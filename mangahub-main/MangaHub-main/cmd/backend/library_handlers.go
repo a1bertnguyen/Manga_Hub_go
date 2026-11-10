@@ -114,70 +114,13 @@ type UpdateProgressReq struct {
 
 // PUT /api/library/:mangaId/progress - Updates reading chapter & triggers TCP sync with per-user isolation
 func updateProgressHandler(c *gin.Context) {
-	userID := c.GetString("user_id")
 	mangaID := c.Param("mangaId")
-	username := c.GetString("username")
-
 	var req UpdateProgressReq
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-
-	// Validate max chapters via gRPC catalog (Grade A Requirement: 400 Bad Request if chapter > total)
-	mangaTitle := mangaID
-	if grpcCatalogClient != nil {
-		ctx, cancel := context.WithTimeout(c.Request.Context(), 2*time.Second)
-		defer cancel()
-		if mResp, err := grpcCatalogClient.GetManga(ctx, &pb.GetMangaRequest{Id: mangaID}); err == nil && mResp.Manga != nil {
-			mangaTitle = mResp.Manga.Title
-			if mResp.Manga.TotalChapters > 0 && int32(req.CurrentChapter) > mResp.Manga.TotalChapters {
-				c.JSON(http.StatusBadRequest, gin.H{
-					"error": fmt.Sprintf("Chapter %d exceeds manga total chapters (%d)", req.CurrentChapter, mResp.Manga.TotalChapters),
-				})
-				return
-			}
-		}
-	}
-
-	res, err := database.DB.Exec(`
-		UPDATE user_progress 
-		SET current_chapter = ?, 
-		    status = COALESCE(NULLIF(?, ''), status), 
-		    updated_at = CURRENT_TIMESTAMP, 
-		    version = version + 1
-		WHERE user_id = ? AND manga_id = ?
-	`, req.CurrentChapter, req.Status, userID, mangaID)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update progress"})
-		return
-	}
-
-	rowsAffected, _ := res.RowsAffected()
-	if rowsAffected == 0 {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Manga not in user library"})
-		return
-	}
-
-	// Fetch updated version (Optimistic Concurrency Control)
-	var newVersion int
-	database.DB.QueryRow("SELECT version FROM user_progress WHERE user_id = ? AND manga_id = ?", userID, mangaID).Scan(&newVersion)
-
-	// Broadcast via TCP ONLY to same user's other sessions (Strict User Isolation)
-	tcp.GlobalHub.BroadcastProgress(models.UserProgress{
-		UserID:         userID,
-		MangaID:        mangaID,
-		CurrentChapter: req.CurrentChapter,
-		Status:         req.Status,
-		Version:        newVersion,
-	}, username, mangaTitle)
-
-	c.JSON(http.StatusOK, gin.H{
-		"message":  "Progress updated and TCP event dispatched",
-		"version":  newVersion,
-		"chapter":  req.CurrentChapter,
-		"manga_id": mangaID,
-	})
+	executeProgressUpdate(c, mangaID, req.CurrentChapter, req.Status)
 }
 
 // updateProgressLegacyHandler handles backwards-compatible PUT /users/progress
@@ -191,7 +134,67 @@ func updateProgressLegacyHandler(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-
-	c.Params = append(c.Params, gin.Param{Key: "mangaId", Value: req.MangaID})
-	updateProgressHandler(c)
+	executeProgressUpdate(c, req.MangaID, req.CurrentChapter, req.Status)
 }
+
+// executeProgressUpdate carries out progress update, validation against max chapters, and TCP broadcast
+func executeProgressUpdate(c *gin.Context, mangaID string, currentChapter int, status string) {
+	userID := c.GetString("user_id")
+	username := c.GetString("username")
+
+	// Validate max chapters via gRPC catalog (Grade A Requirement: 400 Bad Request if chapter > total)
+	mangaTitle := mangaID
+	if grpcCatalogClient != nil {
+		ctx, cancel := context.WithTimeout(c.Request.Context(), 2*time.Second)
+		defer cancel()
+		if mResp, err := grpcCatalogClient.GetManga(ctx, &pb.GetMangaRequest{Id: mangaID}); err == nil && mResp.Manga != nil {
+			mangaTitle = mResp.Manga.Title
+			if mResp.Manga.TotalChapters > 0 && int32(currentChapter) > mResp.Manga.TotalChapters {
+				c.JSON(http.StatusBadRequest, gin.H{
+					"error": fmt.Sprintf("Chapter %d exceeds manga total chapters (%d)", currentChapter, mResp.Manga.TotalChapters),
+				})
+				return
+			}
+		}
+	}
+
+	res, err := database.DB.Exec(`
+		UPDATE user_progress 
+		SET current_chapter = ?, 
+		    status = COALESCE(NULLIF(?, ''), status), 
+		    updated_at = CURRENT_TIMESTAMP, 
+		    version = version + 1
+		WHERE user_id = ? AND manga_id = ?
+	`, currentChapter, status, userID, mangaID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update progress: " + err.Error()})
+		return
+	}
+
+	rowsAffected, _ := res.RowsAffected()
+	if rowsAffected == 0 {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Manga not in user library. Please add it first."})
+		return
+	}
+
+	// Fetch updated version (Optimistic Concurrency Control)
+	var newVersion int
+	database.DB.QueryRow("SELECT version FROM user_progress WHERE user_id = ? AND manga_id = ?", userID, mangaID).Scan(&newVersion)
+
+	// Broadcast via TCP ONLY to same user's other sessions (Strict User Isolation)
+	tcp.GlobalHub.BroadcastProgress(models.UserProgress{
+		UserID:         userID,
+		MangaID:        mangaID,
+		CurrentChapter: currentChapter,
+		Status:         status,
+		Version:        newVersion,
+	}, username, mangaTitle)
+
+	c.JSON(http.StatusOK, gin.H{
+		"message":  "Progress updated and TCP event dispatched",
+		"version":  newVersion,
+		"chapter":  currentChapter,
+		"manga_id": mangaID,
+	})
+}
+

@@ -29,6 +29,10 @@ func main() {
 	}
 	defer database.Close()
 
+	if err := database.SeedManga(); err != nil {
+		log.Printf("[Backend] Warning: Failed to seed manga: %v", err)
+	}
+
 	// 2. Initialize gRPC client to Catalog Service
 	initCatalogGRPC(cfg.CatalogGRPCAddr)
 	if catalogConn != nil {

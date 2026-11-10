@@ -271,7 +271,22 @@ func TestBackend_ChapterValidationAndProgress(t *testing.T) {
 		t.Errorf("Expected 200 OK for valid chapter update, got %d: %s", wGoodProg.Code, wGoodProg.Body.String())
 	}
 
-	// 3. Verify library query returns chapter 20 and version incremented to 2
+	// 2b. Test Legacy Web Endpoint PUT /users/progress
+	progLegacyBody, _ := json.Marshal(map[string]interface{}{
+		"manga_id":        "chainsaw-man",
+		"current_chapter": 21,
+		"status":          "reading",
+	})
+	wLegacy := httptest.NewRecorder()
+	rLegacy, _ := http.NewRequest("PUT", "/users/progress", bytes.NewBuffer(progLegacyBody))
+	rLegacy.Header.Set("Authorization", "Bearer "+token)
+	router.ServeHTTP(wLegacy, rLegacy)
+
+	if wLegacy.Code != http.StatusOK {
+		t.Errorf("Expected 200 OK for legacy /users/progress, got %d: %s", wLegacy.Code, wLegacy.Body.String())
+	}
+
+	// 3. Verify library query returns chapter 21 and version incremented to 3
 	wLib := httptest.NewRecorder()
 	rLib, _ := http.NewRequest("GET", "/api/library", nil)
 	rLib.Header.Set("Authorization", "Bearer "+token)
@@ -285,7 +300,7 @@ func TestBackend_ChapterValidationAndProgress(t *testing.T) {
 		} `json:"library"`
 	}
 	_ = json.Unmarshal(wLib.Body.Bytes(), &libResp)
-	if len(libResp.Library) != 1 || libResp.Library[0].CurrentChapter != 20 || libResp.Library[0].Version != 2 {
-		t.Errorf("Expected chapter 20 and version 2, got: %+v", libResp.Library)
+	if len(libResp.Library) != 1 || libResp.Library[0].CurrentChapter != 21 || libResp.Library[0].Version != 3 {
+		t.Errorf("Expected chapter 21 and version 3, got: %+v", libResp.Library)
 	}
 }

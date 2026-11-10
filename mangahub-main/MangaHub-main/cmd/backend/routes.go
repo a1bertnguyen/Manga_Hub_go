@@ -92,12 +92,17 @@ func setupRouter(cfg *config.Config) *gin.Engine {
 	router.GET("/ws", handleWebSocketUpgrade)
 
 	// Static web assets if present
-	if _, err := os.Stat("web"); err == nil {
-		router.Static("/web", "./web")
+	webDir := "web"
+	if _, err := os.Stat(webDir); os.IsNotExist(err) {
+		webDir = filepath.Join("mangahub-main", "MangaHub-main", "web")
+	}
+	if _, err := os.Stat(webDir); err == nil {
+		router.Static("/web", webDir)
 		router.GET("/", func(c *gin.Context) {
-			c.File(filepath.Join("web", "search_manga.html"))
+			c.File(filepath.Join(webDir, "search_manga.html"))
 		})
 	}
 
 	return router
 }
+

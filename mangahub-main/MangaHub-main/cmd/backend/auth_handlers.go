@@ -3,6 +3,7 @@ package main
 import (
 	"database/sql"
 	"net/http"
+	"strings"
 
 	"mangahub/internal/auth"
 	"mangahub/internal/database"
@@ -26,6 +27,13 @@ func registerHandler(c *gin.Context) {
 		return
 	}
 
+	var emailExists int
+	database.DB.QueryRow("SELECT COUNT(*) FROM users WHERE email = ?", req.Email).Scan(&emailExists)
+	if emailExists > 0 {
+		c.JSON(http.StatusConflict, gin.H{"error": "Email already registered"})
+		return
+	}
+
 	passwordHash, err := auth.HashPassword(req.Password)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to hash password"})
@@ -36,7 +44,11 @@ func registerHandler(c *gin.Context) {
 	_, err = database.DB.Exec(`INSERT INTO users (id, username, email, password_hash) VALUES (?, ?, ?, ?)`,
 		userID, req.Username, req.Email, passwordHash)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create user"})
+		if strings.Contains(err.Error(), "UNIQUE") {
+			c.JSON(http.StatusConflict, gin.H{"error": "Username or email already exists"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create user: " + err.Error()})
 		return
 	}
 
@@ -81,3 +93,4 @@ func loginHandler(c *gin.Context) {
 
 	c.JSON(http.StatusOK, models.LoginResponse{Token: token, Username: user.Username, UserID: user.ID})
 }
+

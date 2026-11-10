@@ -47,3 +47,4 @@ func handleWebSocketUpgrade(c *gin.Context) {
 	go client.WritePump()
 	client.ReadPump()
 }
+

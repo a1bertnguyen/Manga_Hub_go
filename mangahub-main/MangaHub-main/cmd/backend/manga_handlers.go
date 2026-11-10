@@ -37,6 +37,9 @@ func getMangaHandler(c *gin.Context) {
 	if query == "" {
 		query = c.Query("search")
 	}
+	if query == "" {
+		query = c.Query("title")
+	}
 	genre := c.Query("genre")
 
 	if grpcCatalogClient == nil {
@@ -159,3 +162,4 @@ func adminReleaseChapterHandler(c *gin.Context) {
 		"total_chapters": resp.TotalChapters,
 	})
 }
+
