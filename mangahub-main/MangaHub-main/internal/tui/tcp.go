@@ -6,26 +6,39 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"sync"
 	"time"
 )
 
 type TCPWorker struct {
-	state *AppState
-	stop  chan struct{}
+	state   *AppState
+	stop    chan struct{}
+	running bool
+	conn    net.Conn
+	mu      sync.Mutex
 }
 
 func NewTCPWorker(state *AppState) *TCPWorker {
 	return &TCPWorker{
 		state: state,
-		stop:  make(chan struct{}),
 	}
 }
 
 func (w *TCPWorker) Start() {
+	w.mu.Lock()
+	if w.running {
+		w.mu.Unlock()
+		return
+	}
+	w.running = true
+	w.stop = make(chan struct{})
+	stopChan := w.stop
+	w.mu.Unlock()
+
 	go func() {
 		for {
 			select {
-			case <-w.stop:
+			case <-stopChan:
 				return
 			default:
 				if w.state.UserID == "" {
@@ -33,25 +46,61 @@ func (w *TCPWorker) Start() {
 					continue
 				}
 
-				w.connectAndListen()
-				time.Sleep(3 * time.Second) // backoff before reconnect
+				w.connectAndListen(stopChan)
+
+				select {
+				case <-stopChan:
+					return
+				case <-time.After(3 * time.Second): // backoff before reconnect
+				}
 			}
 		}
 	}()
 }
 
 func (w *TCPWorker) Stop() {
+	w.mu.Lock()
+	if !w.running {
+		w.mu.Unlock()
+		return
+	}
+	w.running = false
 	close(w.stop)
+	if w.conn != nil {
+		_ = w.conn.Close()
+		w.conn = nil
+	}
+	w.mu.Unlock()
+	w.state.TCPConnected = false
 }
 
-func (w *TCPWorker) connectAndListen() {
+func (w *TCPWorker) connectAndListen(stopChan chan struct{}) {
 	conn, err := net.DialTimeout("tcp", w.state.TCPAddr, 3*time.Second)
 	if err != nil {
 		w.state.TCPConnected = false
 		w.state.SetStatus("[red]TCP sync disconnected (retrying...)[white]")
 		return
 	}
-	defer conn.Close()
+
+	w.mu.Lock()
+	select {
+	case <-stopChan:
+		w.mu.Unlock()
+		_ = conn.Close()
+		return
+	default:
+		w.conn = conn
+	}
+	w.mu.Unlock()
+
+	defer func() {
+		_ = conn.Close()
+		w.mu.Lock()
+		if w.conn == conn {
+			w.conn = nil
+		}
+		w.mu.Unlock()
+	}()
 
 	// 1. Send first-message authentication
 	authPayload := map[string]string{
@@ -67,7 +116,7 @@ func (w *TCPWorker) connectAndListen() {
 	}
 
 	w.state.TCPConnected = true
-	w.state.SetStatus("[green]TCP sync connected[white]")
+	w.state.SetStatus("[green]TCP sync connected (per-user isolated)[white]")
 
 	scanner := bufio.NewScanner(conn)
 	for scanner.Scan() {
@@ -77,13 +126,13 @@ func (w *TCPWorker) connectAndListen() {
 		}
 
 		var event struct {
-			Type        string `json:"type"`
-			UserID      string `json:"user_id"`
-			MangaID     string `json:"manga_id"`
-			MangaTitle  string `json:"manga_title"`
-			Chapter     int    `json:"chapter"`
-			Status      string `json:"status"`
-			Version     int    `json:"version"`
+			Type       string `json:"type"`
+			UserID     string `json:"user_id"`
+			MangaID    string `json:"manga_id"`
+			MangaTitle string `json:"manga_title"`
+			Chapter    int    `json:"chapter"`
+			Status     string `json:"status"`
+			Version    int    `json:"version"`
 		}
 
 		if err := json.Unmarshal(line, &event); err != nil {
@@ -121,11 +170,14 @@ func (w *TCPWorker) connectAndListen() {
 			}
 			w.state.mu.Unlock()
 
-			// Dispatch UI redraw without refresh
+			// Dispatch UI redraw
 			w.state.App.QueueUpdateDraw(func() {
 				if w.state.LibraryTable != nil {
-					// Re-render library table rows
-					w.refreshLibraryTableRows()
+					w.state.mu.RLock()
+					items := make([]LibraryItem, len(w.state.UserLibrary))
+					copy(items, w.state.UserLibrary)
+					w.state.mu.RUnlock()
+					populateLibraryTable(w.state.LibraryTable, items, w.state.MangaCatalog)
 				}
 				w.state.SetStatus(fmt.Sprintf(
 					"[green]⚡ [TCP Sync][white] %s -> Chapter %d (v%d)",
@@ -137,30 +189,5 @@ func (w *TCPWorker) connectAndListen() {
 
 	w.state.TCPConnected = false
 	w.state.SetStatus("[red]TCP sync connection lost[white]")
+	log.Printf("[TUI TCP] Disconnected from %s", w.state.TCPAddr)
 }
-
-func (w *TCPWorker) refreshLibraryTableRows() {
-	table := w.state.LibraryTable
-	if table == nil {
-		return
-	}
-
-	w.state.mu.RLock()
-	defer w.state.mu.RUnlock()
-
-	// Clear rows except header (row 0)
-	for i := table.GetRowCount() - 1; i > 0; i-- {
-		table.RemoveRow(i)
-	}
-
-	for idx, item := range w.state.UserLibrary {
-		row := idx + 1
-		table.SetCellSimple(row, 0, item.MangaID)
-		table.SetCellSimple(row, 1, item.Title)
-		table.SetCellSimple(row, 2, fmt.Sprintf("%d", item.CurrentChapter))
-		table.SetCellSimple(row, 3, item.Status)
-		table.SetCellSimple(row, 4, fmt.Sprintf("v%d", item.Version))
-	}
-	log.Printf("[TUI TCP] Redrew %d library rows from background TCP event", len(w.state.UserLibrary))
-}
-

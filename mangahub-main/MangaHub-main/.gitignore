@@ -6,3 +6,5 @@ bin/
 *.exe
 *.db
 .env
+.tui_session.json
+

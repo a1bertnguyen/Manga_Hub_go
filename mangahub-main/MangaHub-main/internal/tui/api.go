@@ -86,6 +86,7 @@ func (c *APIClient) Login(username, password string) error {
 	c.state.Token = res.Token
 	c.state.UserID = res.UserID
 	c.state.Username = res.Username
+	_ = SaveSession(res.Token, res.UserID, res.Username)
 	return nil
 }
 
@@ -103,6 +104,7 @@ func (c *APIClient) Register(username, email, password string) error {
 	c.state.Token = res.Token
 	c.state.UserID = res.UserID
 	c.state.Username = res.Username
+	_ = SaveSession(res.Token, res.UserID, res.Username)
 	return nil
 }
 
@@ -165,3 +167,20 @@ func (c *APIClient) UpdateProgress(mangaID string, chapter int, status string) e
 	}, nil)
 }
 
+// TriggerRelease sends an admin request to release a new chapter (updating gRPC and triggering UDP broadcast)
+func (c *APIClient) TriggerRelease(mangaID string, newChapter int, title string) error {
+	return c.doRequest("POST", "/api/admin/manga/"+mangaID+"/release", map[string]interface{}{
+		"chapter": newChapter,
+		"title":   title,
+	}, nil)
+}
+
+// FetchHealth retrieves the live status of all integrated backend services
+func (c *APIClient) FetchHealth() (map[string]interface{}, error) {
+	var res map[string]interface{}
+	err := c.doRequest("GET", "/api/health", nil, &res)
+	if err != nil {
+		return nil, err
+	}
+	return res, nil
+}

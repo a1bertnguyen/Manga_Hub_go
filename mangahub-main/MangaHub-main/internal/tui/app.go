@@ -43,7 +43,9 @@ func Run() error {
 	controller := NewUIController(state, api, tcp, udp, chat)
 	rootLayout := controller.SetupLayout()
 
+	// Try to restore saved session if exists
+	controller.RestoreSession()
+
 	app.SetRoot(rootLayout, true).EnableMouse(true)
 	return app.Run()
 }
-
