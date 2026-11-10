@@ -74,6 +74,62 @@ func main() {
 	go globalWSHub.Run()
 
 	// 6. Initialize Gin Engine (HTTP REST + WebSocket on HTTPPort)
+	router := setupRouter(cfg)
+
+	log.Printf("==================================================")
+	log.Printf("🚀 MANGAHUB UNIFIED BACKEND RUNNING")
+	log.Printf("   HTTP REST & WS : http://localhost:%s", cfg.HTTPPort)
+	log.Printf("   TCP Sync Hub   : tcp://localhost:%s", cfg.TCPPort)
+	log.Printf("   UDP Notifier   : udp://localhost:%s", cfg.UDPPort)
+	log.Printf("   gRPC Catalog   : %s", cfg.CatalogGRPCAddr)
+	log.Printf("   Database       : %s", cfg.BackendDBPath)
+	log.Printf("==================================================")
+
+	if err := router.Run(":" + cfg.HTTPPort); err != nil {
+		log.Fatalf("[Backend] Gin HTTP Server error: %v", err)
+	}
+}
+
+func initCatalogGRPC(addr string) {
+	conn, err := grpc.Dial(addr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		log.Printf("[Backend] Warning: gRPC dial to %s returned error: %v", addr, err)
+		return
+	}
+	catalogConn = conn
+	grpcCatalogClient = pb.NewMangaServiceClient(conn)
+	log.Printf("[Backend] gRPC Catalog Client initialized pointing to %s", addr)
+}
+
+func healthHandler(cfg *config.Config) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		catalogStatus := "unknown"
+		if grpcCatalogClient != nil {
+			ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+			defer cancel()
+			_, err := grpcCatalogClient.SearchManga(ctx, &pb.SearchMangaRequest{Query: ""})
+			if err != nil {
+				catalogStatus = "unreachable"
+			} else {
+				catalogStatus = "connected"
+			}
+		}
+
+		c.JSON(http.StatusOK, gin.H{
+			"status":    "healthy",
+			"timestamp": time.Now().Unix(),
+			"services": gin.H{
+				"http":         "running (:" + cfg.HTTPPort + ")",
+				"tcp":          "running (:" + cfg.TCPPort + ")",
+				"udp":          "running (:" + cfg.UDPPort + ")",
+				"websocket":    "/ws",
+				"grpc_catalog": catalogStatus,
+			},
+		})
+	}
+}
+
+func setupRouter(cfg *config.Config) *gin.Engine {
 	router := gin.Default()
 	router.Use(cors.Default())
 
@@ -127,57 +183,7 @@ func main() {
 		})
 	}
 
-	log.Printf("==================================================")
-	log.Printf("🚀 MANGAHUB UNIFIED BACKEND RUNNING")
-	log.Printf("   HTTP REST & WS : http://localhost:%s", cfg.HTTPPort)
-	log.Printf("   TCP Sync Hub   : tcp://localhost:%s", cfg.TCPPort)
-	log.Printf("   UDP Notifier   : udp://localhost:%s", cfg.UDPPort)
-	log.Printf("   gRPC Catalog   : %s", cfg.CatalogGRPCAddr)
-	log.Printf("   Database       : %s", cfg.BackendDBPath)
-	log.Printf("==================================================")
-
-	if err := router.Run(":" + cfg.HTTPPort); err != nil {
-		log.Fatalf("[Backend] Gin HTTP Server error: %v", err)
-	}
-}
-
-func initCatalogGRPC(addr string) {
-	conn, err := grpc.Dial(addr, grpc.WithTransportCredentials(insecure.NewCredentials()))
-	if err != nil {
-		log.Printf("[Backend] Warning: gRPC dial to %s returned error: %v", addr, err)
-		return
-	}
-	catalogConn = conn
-	grpcCatalogClient = pb.NewMangaServiceClient(conn)
-	log.Printf("[Backend] gRPC Catalog Client initialized pointing to %s", addr)
-}
-
-func healthHandler(cfg *config.Config) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		catalogStatus := "unknown"
-		if grpcCatalogClient != nil {
-			ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
-			defer cancel()
-			_, err := grpcCatalogClient.SearchManga(ctx, &pb.SearchMangaRequest{Query: ""})
-			if err != nil {
-				catalogStatus = "unreachable"
-			} else {
-				catalogStatus = "connected"
-			}
-		}
-
-		c.JSON(http.StatusOK, gin.H{
-			"status":    "healthy",
-			"timestamp": time.Now().Unix(),
-			"services": gin.H{
-				"http":         "running (:" + cfg.HTTPPort + ")",
-				"tcp":          "running (:" + cfg.TCPPort + ")",
-				"udp":          "running (:" + cfg.UDPPort + ")",
-				"websocket":    "/ws",
-				"grpc_catalog": catalogStatus,
-			},
-		})
-	}
+	return router
 }
 
 func startTCPListener(port string) {
@@ -363,6 +369,22 @@ func loginHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, models.LoginResponse{Token: token, Username: user.Username, UserID: user.ID})
 }
 
+func isCatalogUnavailable(err error) bool {
+	if err == nil {
+		return false
+	}
+	st, _ := status.FromError(err)
+	if st.Code() == codes.Unavailable || st.Code() == codes.DeadlineExceeded || st.Code() == codes.Canceled {
+		return true
+	}
+	errStr := strings.ToLower(err.Error())
+	return strings.Contains(errStr, "connection is closing") ||
+		strings.Contains(errStr, "connection refused") ||
+		strings.Contains(errStr, "transientfailure") ||
+		strings.Contains(errStr, "deadline") ||
+		strings.Contains(errStr, "unavailable")
+}
+
 // GET /api/manga?q=... - Obtains manga catalog through gRPC
 func getMangaHandler(c *gin.Context) {
 	query := c.Query("q")
@@ -385,7 +407,7 @@ func getMangaHandler(c *gin.Context) {
 	})
 	if err != nil {
 		st, _ := status.FromError(err)
-		if st.Code() == codes.Unavailable || st.Code() == codes.DeadlineExceeded {
+		if isCatalogUnavailable(err) {
 			c.JSON(http.StatusServiceUnavailable, gin.H{"error": "Catalog service unavailable: " + st.Message()})
 			return
 		}
@@ -418,7 +440,7 @@ func getMangaDetailHandler(c *gin.Context) {
 			c.JSON(http.StatusNotFound, gin.H{"error": "Manga not found"})
 			return
 		}
-		if st.Code() == codes.Unavailable || st.Code() == codes.DeadlineExceeded {
+		if isCatalogUnavailable(err) {
 			c.JSON(http.StatusServiceUnavailable, gin.H{"error": "Catalog service unavailable: " + st.Message()})
 			return
 		}

@@ -23,7 +23,6 @@ func StartUDPListener(addr string) {
 	log.Printf("[UDP Listener] Server listening on %s", addr)
 
 	go readPump()
-	go writePump()
 }
 
 func readPump() {
@@ -31,6 +30,9 @@ func readPump() {
 	for {
 		n, clientAddr, err := udpConn.ReadFromUDP(buffer)
 		if err != nil {
+			if strings.Contains(err.Error(), "use of closed network connection") {
+				return
+			}
 			log.Printf("[UDP Listener] Read error: %v", err)
 			continue
 		}
@@ -68,17 +70,4 @@ func readPump() {
 	}
 }
 
-func writePump() {
-	for message := range GlobalHub.broadcast {
-		GlobalHub.mu.RLock()
-		for _, client := range GlobalHub.clients {
-			_, err := udpConn.WriteToUDP(message, client.Addr)
-			if err != nil {
-				log.Printf("[UDP Listener] Failed to send to %s: %v", client.Addr.String(), err)
-			} else {
-				client.LastSeen = time.Now()
-			}
-		}
-		GlobalHub.mu.RUnlock()
-	}
-}
+

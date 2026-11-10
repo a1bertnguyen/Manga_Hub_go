@@ -29,11 +29,16 @@ type Hub struct {
 	mu         sync.RWMutex
 }
 
-var GlobalHub = &Hub{
-	clients:    make(map[*Client]bool),
-	broadcast:  make(chan UserBroadcast, 256),
-	Register:   make(chan *Client),
-	Unregister: make(chan *Client),
+var GlobalHub = NewHub()
+
+// NewHub creates a new Hub instance for TCP progress synchronization
+func NewHub() *Hub {
+	return &Hub{
+		clients:    make(map[*Client]bool),
+		broadcast:  make(chan UserBroadcast, 256),
+		Register:   make(chan *Client),
+		Unregister: make(chan *Client),
+	}
 }
 
 func (h *Hub) Run() {

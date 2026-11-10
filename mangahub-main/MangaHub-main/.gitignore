@@ -1,3 +1,7 @@
+.gitnexus/
+.claude/
+AGENTS.md
+CLAUDE.md
 bin/
 *.exe
 *.db

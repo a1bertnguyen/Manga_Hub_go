@@ -25,11 +25,16 @@ type Hub struct {
 	mu         sync.RWMutex
 }
 
-var GlobalHub = &Hub{
-	clients:    make(map[string]*ClientAddr),
-	broadcast:  make(chan []byte, 256),
-	Register:   make(chan *ClientAddr),
-	Unregister: make(chan *ClientAddr),
+var GlobalHub = NewHub()
+
+// NewHub creates a new Hub instance for UDP notification management
+func NewHub() *Hub {
+	return &Hub{
+		clients:    make(map[string]*ClientAddr),
+		broadcast:  make(chan []byte, 256),
+		Register:   make(chan *ClientAddr),
+		Unregister: make(chan *ClientAddr),
+	}
 }
 
 func (h *Hub) Run() {
@@ -61,11 +66,13 @@ func (h *Hub) Run() {
 		case message := <-h.broadcast:
 			h.mu.RLock()
 			for key, client := range h.clients {
-				_, err := udpConn.WriteToUDP(message, client.Addr)
-				if err != nil {
-					log.Printf("[UDP Hub] UDP send failed to %s: %v", key, err)
-				} else {
-					client.LastSeen = time.Now()
+				if udpConn != nil {
+					_, err := udpConn.WriteToUDP(message, client.Addr)
+					if err != nil {
+						log.Printf("[UDP Hub] UDP send failed to %s: %v", key, err)
+					} else {
+						client.LastSeen = time.Now()
+					}
 				}
 			}
 			h.mu.RUnlock()
