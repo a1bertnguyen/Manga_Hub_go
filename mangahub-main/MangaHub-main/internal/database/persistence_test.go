@@ -137,3 +137,4 @@ func TestOptimisticConcurrencyLocking(t *testing.T) {
 		t.Errorf("Optimistic concurrency failure: Stale update succeeded! Rows affected: %d", staleRowsAffected)
 	}
 }
+

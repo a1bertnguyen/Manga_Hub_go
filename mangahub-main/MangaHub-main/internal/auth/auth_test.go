@@ -94,3 +94,4 @@ func TestGenerateID(t *testing.T) {
 		t.Errorf("GenerateID produced duplicate IDs: %s == %s", id1, id2)
 	}
 }
+

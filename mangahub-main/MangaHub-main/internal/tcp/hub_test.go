@@ -117,3 +117,4 @@ func TestHub_Unregister(t *testing.T) {
 		t.Errorf("Expected client.Send channel to be closed after unregistering")
 	}
 }
+

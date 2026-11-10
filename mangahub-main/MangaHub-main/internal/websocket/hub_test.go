@@ -148,3 +148,4 @@ func TestWebSocketHub_HistoryAndDisconnect(t *testing.T) {
 		t.Errorf("Expected 0 clients after unregister, got %d", count)
 	}
 }
+
