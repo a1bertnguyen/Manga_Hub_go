@@ -113,3 +113,4 @@ func (c *UIController) buildDiscussionView() tview.Primitive {
 
 	return split
 }
+

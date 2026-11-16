@@ -171,3 +171,4 @@ func (c *UIController) onLogout() {
 	c.SwitchTab("auth")
 	c.state.SetStatus("[yellow]Logged out successfully. Browsing as Guest.[white]")
 }
+

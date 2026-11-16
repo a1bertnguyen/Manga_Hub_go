@@ -223,3 +223,4 @@ func (c *UIController) showAddToLibraryDialog(m *models.Manga) {
 
 	c.state.Pages.AddPage("dialog", modal, true, true)
 }
+

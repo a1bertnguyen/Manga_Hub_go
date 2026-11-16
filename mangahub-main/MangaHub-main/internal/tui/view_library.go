@@ -253,3 +253,4 @@ func (c *UIController) showUpdateProgressDialog(item LibraryItem) {
 
 	c.state.Pages.AddPage("update_dialog", centerPrimitive(flex, 56, 13), true, true)
 }
+

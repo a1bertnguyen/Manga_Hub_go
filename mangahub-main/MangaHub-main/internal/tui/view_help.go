@@ -106,3 +106,4 @@ func (c *UIController) renderHelpContent(textView *tview.TextView) {
 		})
 	}()
 }
+

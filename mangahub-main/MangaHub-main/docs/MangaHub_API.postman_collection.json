@@ -1,0 +1,1360 @@
+{
+  "info": {
+    "_postman_id": "d8f4b3e1-9c2a-4f10-8a7e-5b3c1d2e4f60",
+    "name": "MangaHub API (IT096IIU)",
+    "description": "Complete Postman Collection for MangaHub Net-Centric Programming (IT096IIU) backend.\n\nIncludes:\n1. System Health Check (HTTP, gRPC, TCP, UDP, WebSocket status)\n2. Auth (Register, Duplicate 409, Validation 400, Login 200, Unauthorized 401)\n3. Manga Catalog via gRPC (:9092) (List, Search, Filter, Detail, 404, 401)\n4. Reading Library & TCP Sync (:9090) (Add, Get, Update Progress, Max Chapter 400, Not Found 404)\n5. Admin Chapter Release & UDP Broadcast (:9091)\n6. Legacy Web UI Compatibility Aliases\n7. Fault Injection Verification (gRPC 2s Deadline -> HTTP 503)\n\nHow to run:\n- Import this single file into Postman.\n- Ensure Catalog (:9092) and Backend (:8080) are running.\n- Run the entire collection via Collection Runner, or start with 'Register New User' (it automatically saves {{token}} for all protected requests!).",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080",
+      "type": "string"
+    },
+    {
+      "key": "token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "userId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "username",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "testUsername",
+      "value": "postman_user",
+      "type": "string"
+    },
+    {
+      "key": "testEmail",
+      "value": "postman_user@example.com",
+      "type": "string"
+    },
+    {
+      "key": "mangaId",
+      "value": "one-piece",
+      "type": "string"
+    },
+    {
+      "key": "unusedMangaId",
+      "value": "slamdunk",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "1. System & Health",
+      "item": [
+        {
+          "name": "Health Check (All 5 Protocols)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const jsonData = pm.response.json();",
+                  "pm.test(\"Backend reports healthy with all 5 protocol services\", function () {",
+                  "    pm.expect(jsonData.status).to.eql(\"healthy\");",
+                  "    pm.expect(jsonData.services).to.have.property(\"http\");",
+                  "    pm.expect(jsonData.services).to.have.property(\"tcp\");",
+                  "    pm.expect(jsonData.services).to.have.property(\"udp\");",
+                  "    pm.expect(jsonData.services).to.have.property(\"websocket\");",
+                  "    pm.expect(jsonData.services).to.have.property(\"grpc_catalog\");",
+                  "});",
+                  "",
+                  "pm.test(\"gRPC Catalog service is connected\", function () {",
+                  "    pm.expect(jsonData.services.grpc_catalog).to.eql(\"connected\");",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/health",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "health"
+              ]
+            },
+            "description": "Verifies HTTP REST (:8080), TCP Sync (:9090), UDP (:9091), WebSocket (/ws), and gRPC Catalog (:9092) connectivity."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "2. Authentication",
+      "item": [
+        {
+          "name": "Register New User (200 OK - Auto Save Token)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "const uniqueId = Date.now() + \"_\" + Math.floor(Math.random() * 1000);",
+                  "pm.collectionVariables.set(\"testUsername\", \"postman_\" + uniqueId);",
+                  "pm.collectionVariables.set(\"testEmail\", \"postman_\" + uniqueId + \"@example.com\");"
+                ],
+                "type": "text/javascript"
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const jsonData = pm.response.json();",
+                  "pm.test(\"Returns JWT token, user_id, and username\", function () {",
+                  "    pm.expect(jsonData.token).to.be.a(\"string\").and.not.empty;",
+                  "    pm.expect(jsonData.user_id).to.be.a(\"string\").and.not.empty;",
+                  "    pm.expect(jsonData.username).to.eql(pm.collectionVariables.get(\"testUsername\"));",
+                  "});",
+                  "",
+                  "if (jsonData.token) {",
+                  "    pm.collectionVariables.set(\"token\", jsonData.token);",
+                  "    pm.collectionVariables.set(\"userId\", jsonData.user_id);",
+                  "    pm.collectionVariables.set(\"username\", jsonData.username);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"{{testUsername}}\",\n  \"email\": \"{{testEmail}}\",\n  \"password\": \"password123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "register"
+              ]
+            },
+            "description": "Generates a fresh user on each run and automatically stores {{token}}, {{userId}}, and {{username}} into Collection Variables."
+          },
+          "response": []
+        },
+        {
+          "name": "Register Duplicate User/Email (409 Conflict)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 409 Conflict\", function () {",
+                  "    pm.response.to.have.status(409);",
+                  "});",
+                  "",
+                  "const jsonData = pm.response.json();",
+                  "pm.test(\"Returns duplicate error message\", function () {",
+                  "    pm.expect(jsonData.error).to.be.a(\"string\").and.not.empty;",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"{{testUsername}}\",\n  \"email\": \"{{testEmail}}\",\n  \"password\": \"password123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "register"
+              ]
+            },
+            "description": "Re-submits the exact same username/email from the previous request to verify HTTP 409 Conflict handling (no 500 error)."
+          },
+          "response": []
+        },
+        {
+          "name": "Register Short Password < 8 Chars (400 Bad Request)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 400 Bad Request\", function () {",
+                  "    pm.response.to.have.status(400);",
+                  "});",
+                  "",
+                  "const jsonData = pm.response.json();",
+                  "pm.test(\"Error mentions Password min validation\", function () {",
+                  "    pm.expect(jsonData.error).to.include(\"Password\");",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"short_pw_user\",\n  \"email\": \"shortpw@example.com\",\n  \"password\": \"123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "register"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Login Valid User (200 OK - Refresh Token)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const jsonData = pm.response.json();",
+                  "pm.test(\"Login returns valid JWT token\", function () {",
+                  "    pm.expect(jsonData.token).to.be.a(\"string\").and.not.empty;",
+                  "});",
+                  "",
+                  "if (jsonData.token) {",
+                  "    pm.collectionVariables.set(\"token\", jsonData.token);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"{{testUsername}}\",\n  \"password\": \"password123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Login Wrong Password (401 Unauthorized)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 401 Unauthorized\", function () {",
+                  "    pm.response.to.have.status(401);",
+                  "});",
+                  "",
+                  "const jsonData = pm.response.json();",
+                  "pm.test(\"Returns Invalid credentials error\", function () {",
+                  "    pm.expect(jsonData.error).to.eql(\"Invalid credentials\");",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"{{testUsername}}\",\n  \"password\": \"wrongpassword123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "3. Manga Catalog (HTTP -> gRPC :9092)",
+      "item": [
+        {
+          "name": "List All Manga (200 OK)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const jsonData = pm.response.json();",
+                  "pm.test(\"Returns manga array and count (up to LIMIT 20)\", function () {",
+                  "    pm.expect(jsonData.manga).to.be.an(\"array\").and.not.empty;",
+                  "    pm.expect(jsonData.count).to.eql(jsonData.manga.length);",
+                  "    pm.expect(jsonData.count).to.be.at.least(1);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/manga",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "manga"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Search Manga by Query (?q=One)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const jsonData = pm.response.json();",
+                  "pm.test(\"Finds matching manga (One Piece)\", function () {",
+                  "    pm.expect(jsonData.manga).to.be.an(\"array\").and.not.empty;",
+                  "    const titles = jsonData.manga.map(m => m.title);",
+                  "    pm.expect(titles).to.include(\"One Piece\");",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/manga?q=One",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "manga"
+              ],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "One"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Filter Manga by Genre (?genre=Action)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const jsonData = pm.response.json();",
+                  "pm.test(\"Returns Action genre manga items\", function () {",
+                  "    pm.expect(jsonData.manga).to.be.an(\"array\").and.not.empty;",
+                  "    pm.expect(jsonData.manga[0].genres).to.include(\"Action\");",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/manga?genre=Action",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "manga"
+              ],
+              "query": [
+                {
+                  "key": "genre",
+                  "value": "Action"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Search Combined Query & Genre",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const jsonData = pm.response.json();",
+                  "pm.test(\"Returns filtered results\", function () {",
+                  "    pm.expect(jsonData.manga).to.be.an(\"array\").and.not.empty;",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/manga?q=Dragon&genre=Action",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "manga"
+              ],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "Dragon"
+                },
+                {
+                  "key": "genre",
+                  "value": "Action"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Manga Detail by ID (200 OK)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const jsonData = pm.response.json();",
+                  "pm.test(\"Returns correct manga metadata\", function () {",
+                  "    pm.expect(jsonData.id).to.eql(pm.collectionVariables.get(\"mangaId\"));",
+                  "    pm.expect(jsonData.title).to.eql(\"One Piece\");",
+                  "    pm.expect(jsonData.total_chapters).to.be.a(\"number\");",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/manga/{{mangaId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "manga",
+                "{{mangaId}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Non-Existent Manga (404 Not Found)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 404 Not Found\", function () {",
+                  "    pm.response.to.have.status(404);",
+                  "});",
+                  "",
+                  "const jsonData = pm.response.json();",
+                  "pm.test(\"Returns Manga not found error\", function () {",
+                  "    pm.expect(jsonData.error).to.include(\"not found\");",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/manga/non-existent-manga-999",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "manga",
+                "non-existent-manga-999"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Access Catalog Without Token (401 Unauthorized)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 401 Unauthorized\", function () {",
+                  "    pm.response.to.have.status(401);",
+                  "});",
+                  "",
+                  "const jsonData = pm.response.json();",
+                  "pm.test(\"Rejects missing Authorization header\", function () {",
+                  "    pm.expect(jsonData.error).to.eql(\"Authorization header required\");",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/manga",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "manga"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "4. Reading Library & TCP Sync (HTTP -> TCP :9090)",
+      "item": [
+        {
+          "name": "Add Manga to Library (200 OK)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const jsonData = pm.response.json();",
+                  "pm.test(\"Confirms addition to library\", function () {",
+                  "    pm.expect(jsonData.message).to.eql(\"Added to library\");",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"manga_id\": \"{{mangaId}}\",\n  \"status\": \"reading\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/library",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "library"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Add Non-Existent Manga to Library (404 Not Found)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 404 Not Found\", function () {",
+                  "    pm.response.to.have.status(404);",
+                  "});",
+                  "",
+                  "const jsonData = pm.response.json();",
+                  "pm.test(\"Rejects unknown manga ID via gRPC check\", function () {",
+                  "    pm.expect(jsonData.error).to.include(\"not found\");",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"manga_id\": \"non-existent-manga-999\",\n  \"status\": \"reading\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/library",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "library"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Personal Library (200 OK)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const jsonData = pm.response.json();",
+                  "pm.test(\"Library contains added manga with gRPC-enriched title\", function () {",
+                  "    pm.expect(jsonData.library).to.be.an(\"array\").and.not.empty;",
+                  "    const ids = jsonData.library.map(item => item.manga_id);",
+                  "    pm.expect(ids).to.include(pm.collectionVariables.get(\"mangaId\"));",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/library",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "library"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update Progress Valid (200 OK + TCP Broadcast)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const jsonData = pm.response.json();",
+                  "pm.test(\"Updates chapter and increments optimistic lock version\", function () {",
+                  "    pm.expect(jsonData.chapter).to.eql(15);",
+                  "    pm.expect(jsonData.manga_id).to.eql(pm.collectionVariables.get(\"mangaId\"));",
+                  "    pm.expect(jsonData.version).to.be.at.least(2);",
+                  "    pm.expect(jsonData.message).to.include(\"TCP event dispatched\");",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"current_chapter\": 15,\n  \"status\": \"reading\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/library/{{mangaId}}/progress",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "library",
+                "{{mangaId}}",
+                "progress"
+              ]
+            },
+            "description": "Persists chapter 15 to SQLite, increments optimistic version, and pushes progress_updated event via TCP (:9090) only to same user's connected sessions."
+          },
+          "response": []
+        },
+        {
+          "name": "Update Progress > Total Chapters (400 Bad Request)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 400 Bad Request\", function () {",
+                  "    pm.response.to.have.status(400);",
+                  "});",
+                  "",
+                  "const jsonData = pm.response.json();",
+                  "pm.test(\"Rejects chapter exceeding catalog total_chapters\", function () {",
+                  "    pm.expect(jsonData.error).to.include(\"exceeds manga total chapters\");",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"current_chapter\": 99999,\n  \"status\": \"reading\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/library/{{mangaId}}/progress",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "library",
+                "{{mangaId}}",
+                "progress"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update Progress Not In Library (404 Not Found)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 404 Not Found\", function () {",
+                  "    pm.response.to.have.status(404);",
+                  "});",
+                  "",
+                  "const jsonData = pm.response.json();",
+                  "pm.test(\"Reports manga is not in user library\", function () {",
+                  "    pm.expect(jsonData.error).to.include(\"not in user library\");",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"current_chapter\": 5,\n  \"status\": \"reading\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/library/{{unusedMangaId}}/progress",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "library",
+                "{{unusedMangaId}}",
+                "progress"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "5. Admin Release & UDP Alert (HTTP -> gRPC -> UDP :9091)",
+      "item": [
+        {
+          "name": "Release Chapter & Broadcast UDP (200 OK)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const jsonData = pm.response.json();",
+                  "pm.test(\"Updates gRPC catalog and triggers UDP alert\", function () {",
+                  "    pm.expect(jsonData.manga_id).to.eql(pm.collectionVariables.get(\"mangaId\"));",
+                  "    pm.expect(jsonData.total_chapters).to.eql(1105);",
+                  "    pm.expect(jsonData.message).to.include(\"UDP alert broadcasted\");",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"chapter\": 1105,\n  \"title\": \"One Piece\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/manga/{{mangaId}}/release",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "manga",
+                "{{mangaId}}",
+                "release"
+              ]
+            },
+            "description": "Triggers a new chapter release. Backend calls gRPC UpdateChapters (:9092) and broadcasts a UDP datagram (:9091) to all subscribed TUI clients."
+          },
+          "response": []
+        },
+        {
+          "name": "Release Invalid Chapter <= 0 (400 Bad Request)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 400 Bad Request\", function () {",
+                  "    pm.response.to.have.status(400);",
+                  "});",
+                  "",
+                  "const jsonData = pm.response.json();",
+                  "pm.test(\"Rejects non-positive chapter\", function () {",
+                  "    pm.expect(jsonData.error).to.include(\"integer > 0\");",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"chapter\": 0\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/manga/{{mangaId}}/release",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "manga",
+                "{{mangaId}}",
+                "release"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Release Chapter Unknown Manga (404 Not Found)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 404 Not Found\", function () {",
+                  "    pm.response.to.have.status(404);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"chapter\": 10\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/manga/non-existent-manga-999/release",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "manga",
+                "non-existent-manga-999",
+                "release"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "6. Legacy Web UI Aliases",
+      "item": [
+        {
+          "name": "Legacy Search by Title (/manga?title=One)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "const jsonData = pm.response.json();",
+                  "pm.test(\"Supports ?title query param\", function () {",
+                  "    pm.expect(jsonData.manga).to.be.an(\"array\").and.not.empty;",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/manga?title=One",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "manga"
+              ],
+              "query": [
+                {
+                  "key": "title",
+                  "value": "One"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Legacy Get Library (/users/library)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/users/library",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users",
+                "library"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Legacy Update Progress (/users/progress)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const jsonData = pm.response.json();",
+                  "pm.test(\"Legacy PUT /users/progress updates chapter cleanly\", function () {",
+                  "    pm.expect(jsonData.chapter).to.eql(20);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"manga_id\": \"{{mangaId}}\",\n  \"current_chapter\": 20,\n  \"status\": \"reading\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/users/progress",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users",
+                "progress"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "7. Fault Injection (Manual gRPC Down -> 503)",
+      "item": [
+        {
+          "name": "Verify Bounded Failure (503 when Catalog Stopped)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Responds within bounded timeout (< 2500ms)\", function () {",
+                  "    pm.expect(pm.response.responseTime).to.be.below(2500);",
+                  "});",
+                  "",
+                  "pm.test(\"Returns 200 (Catalog UP) or 503 (Catalog DOWN)\", function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 503]);",
+                  "});",
+                  "",
+                  "if (pm.response.code === 503) {",
+                  "    console.log(\"Fault Injection Verified: Backend returned HTTP 503 when gRPC Catalog (:9092) was stopped!\");",
+                  "} else {",
+                  "    console.log(\"Catalog service is currently RUNNING (200 OK). To test 503 fallback, stop cmd/catalog and click Send again.\");",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/manga?q=One",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "manga"
+              ],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "One"
+                }
+              ]
+            },
+            "description": "Manual Fault Injection Demo:\n1. Stop the gRPC Catalog process (:9092).\n2. Send this request.\n3. Verify that Backend does NOT hang and instead fails bounded within 2s returning HTTP 503 Service Unavailable."
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}

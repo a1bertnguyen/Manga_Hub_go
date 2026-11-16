@@ -51,3 +51,4 @@ func ClearSession() error {
 	}
 	return os.Remove(sessionFileName)
 }
+

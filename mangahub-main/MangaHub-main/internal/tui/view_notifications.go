@@ -106,3 +106,4 @@ func (c *UIController) triggerDemoChapterRelease() {
 		})
 	}()
 }
+

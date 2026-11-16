@@ -476,6 +476,9 @@ type UpdateChaptersRequest struct {
 
 func (x *UpdateChaptersRequest) Reset() {
 	*x = UpdateChaptersRequest{}
+	mi := &file_proto_manga_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
 }
 
 func (x *UpdateChaptersRequest) ProtoReflect() protoreflect.Message {
@@ -495,6 +498,11 @@ func (x *UpdateChaptersRequest) String() string {
 }
 
 func (*UpdateChaptersRequest) ProtoMessage() {}
+
+// Deprecated: Use UpdateChaptersRequest.ProtoReflect.Descriptor instead.
+func (*UpdateChaptersRequest) Descriptor() ([]byte, []int) {
+	return file_proto_manga_proto_rawDescGZIP(), []int{7}
+}
 
 func (x *UpdateChaptersRequest) GetId() string {
 	if x != nil {
@@ -521,6 +529,9 @@ type UpdateChaptersResponse struct {
 
 func (x *UpdateChaptersResponse) Reset() {
 	*x = UpdateChaptersResponse{}
+	mi := &file_proto_manga_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
 }
 
 func (x *UpdateChaptersResponse) ProtoReflect() protoreflect.Message {
@@ -540,6 +551,11 @@ func (x *UpdateChaptersResponse) String() string {
 }
 
 func (*UpdateChaptersResponse) ProtoMessage() {}
+
+// Deprecated: Use UpdateChaptersResponse.ProtoReflect.Descriptor instead.
+func (*UpdateChaptersResponse) Descriptor() ([]byte, []int) {
+	return file_proto_manga_proto_rawDescGZIP(), []int{8}
+}
 
 func (x *UpdateChaptersResponse) GetSuccess() bool {
 	if x != nil {
