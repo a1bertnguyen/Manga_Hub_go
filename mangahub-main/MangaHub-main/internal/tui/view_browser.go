@@ -48,13 +48,13 @@ func (c *UIController) buildBrowserView() tview.Primitive {
 		}
 	})
 
-	// Table Dynamic Selection -> Update details panel live
+	// Table Dynamic Selection -> Update details panel live via gRPC
 	c.state.CatalogTable.SetSelectionChangedFunc(func(row, column int) {
 		if row <= 0 || row > len(c.state.MangaCatalog) {
 			return
 		}
 		m := c.state.MangaCatalog[row-1]
-		c.renderMangaDetails(m)
+		c.loadMangaDetailAsync(m.ID, m)
 	})
 
 	// Table Selection Action -> Add to library
@@ -129,7 +129,16 @@ func (c *UIController) refreshMangaCatalog(query string) {
 		mangas, err := c.api.FetchManga(query, "")
 		c.state.App.QueueUpdateDraw(func() {
 			if err != nil {
-				c.state.SetStatus(fmt.Sprintf("[red]Fetch catalog failed: %v", err))
+				errMsg := err.Error()
+				if strings.Contains(errMsg, "401") || strings.Contains(errMsg, "Authorization") {
+					c.state.SetStatus("[yellow]Login required to access catalog. Press '0' or F10 to login.[white]")
+					c.state.DetailView.SetText("\n [yellow:b]🔐 Authentication Required[-:-:-]\n\n" +
+						" Please log in to browse the catalog and synchronize reading progress.\n\n" +
+						" • Press [green]'0'[white] or [green]F10[white] to Login or Register.\n" +
+						" • Or click on [yellow][0] Account[white] in the top navigation bar.")
+					return
+				}
+				c.state.SetStatus(fmt.Sprintf("[red]Fetch catalog failed: %v[white]", err))
 				c.state.DetailView.SetText(fmt.Sprintf(
 					"\n [red:b]ERROR: Could not reach Catalog Service[-:-:-]\n\n"+
 						" [white]Details: %v\n\n"+
@@ -163,10 +172,44 @@ func (c *UIController) refreshMangaCatalog(query string) {
 				table.SetCell(row, 5, tview.NewTableCell(fmt.Sprintf(" %s%s[white]", statusColor, strings.ToUpper(m.Status))))
 			}
 
-			c.state.SetStatus(fmt.Sprintf("[green]Loaded %d manga from Catalog Service[white]", len(mangas)))
-			if len(mangas) > 0 {
-				c.renderMangaDetails(mangas[0])
+			if len(mangas) == 0 {
+				c.state.SetStatus(fmt.Sprintf("[yellow]No manga found matching '%s'[white]", query))
+				c.state.DetailView.SetText(fmt.Sprintf(
+					"\n [yellow:b]🔍 No Results Found[-:-:-]\n\n"+
+						" No manga matched your search query: [white]'%s'[white]\n\n"+
+						" • Press [yellow]'r'[white] to reset search and view all manga.\n"+
+						" • Press [yellow]'/'[white] to search with a different keyword.",
+					query,
+				))
+			} else {
+				c.state.SetStatus(fmt.Sprintf("[green]Loaded %d manga from Catalog Service[white]", len(mangas)))
+				c.loadMangaDetailAsync(mangas[0].ID, mangas[0])
 			}
+		})
+	}()
+}
+
+func (c *UIController) loadMangaDetailAsync(mangaID string, fallback *models.Manga) {
+	if fallback != nil {
+		c.renderMangaDetails(fallback)
+	}
+	go func() {
+		detail, err := c.api.GetMangaDetail(mangaID)
+		if err != nil {
+			if strings.Contains(err.Error(), "503") || strings.Contains(err.Error(), "unavailable") {
+				c.state.App.QueueUpdateDraw(func() {
+					c.state.DetailView.SetText(fmt.Sprintf(
+						"\n [red:b]HTTP 503 Service Unavailable[-:-:-]\n\n"+
+							" [white]Catalog Service (:9092) is unreachable.\n"+
+							" gRPC client deadline reached after 2 seconds.\n\n"+
+							" Details: %v", err,
+					))
+				})
+			}
+			return
+		}
+		c.state.App.QueueUpdateDraw(func() {
+			c.renderMangaDetails(detail)
 		})
 	}()
 }

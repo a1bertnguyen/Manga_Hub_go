@@ -74,32 +74,39 @@ func (s *AppState) SetStatus(msg string) {
 	if s.StatusBar == nil {
 		return
 	}
-	s.App.QueueUpdateDraw(func() {
-		userDisplay := "Guest"
-		if s.Username != "" {
-			userDisplay = s.Username
-		}
+	s.mu.RLock()
+	userDisplay := "Guest"
+	if s.Username != "" {
+		userDisplay = s.Username
+	}
 
-		tcpDot := "[red]●[white]"
-		if s.TCPConnected {
-			tcpDot = "[green]●[white]"
-		}
+	tcpDot := "[red]●[white]"
+	if s.TCPConnected {
+		tcpDot = "[green]●[white]"
+	}
 
-		udpDot := "[red]●[white]"
-		if s.UDPSubscribed {
-			udpDot = "[green]●[white]"
-		}
+	udpDot := "[red]●[white]"
+	if s.UDPSubscribed {
+		udpDot = "[green]●[white]"
+	}
 
-		wsDot := "[red]●[white]"
-		if s.WSConnected {
-			wsDot = "[green]●[white]"
-		}
+	wsDot := "[red]●[white]"
+	if s.WSConnected {
+		wsDot = "[green]●[white]"
+	}
+	s.mu.RUnlock()
 
-		s.StatusBar.SetText(fmt.Sprintf(
-			" User: [yellow]%s[white] | TCP:%s UDP:%s WS:%s | %s",
-			userDisplay, tcpDot, udpDot, wsDot, msg,
-		))
-	})
+	text := fmt.Sprintf(
+		" User: [yellow]%s[white] | TCP:%s UDP:%s WS:%s | %s",
+		userDisplay, tcpDot, udpDot, wsDot, msg,
+	)
+
+	// Run in goroutine to prevent deadlocking if called from the main UI thread
+	go func() {
+		s.App.QueueUpdateDraw(func() {
+			s.StatusBar.SetText(text)
+		})
+	}()
 }
 
 func (s *AppState) AddNotification(notif string) {
@@ -111,17 +118,19 @@ func (s *AppState) AddNotification(notif string) {
 	}
 	s.mu.Unlock()
 
-	s.App.QueueUpdateDraw(func() {
-		if s.NotifView != nil {
-			var fullText string
-			s.mu.RLock()
-			for _, n := range s.NotificationList {
-				fullText += n + "\n\n"
+	go func() {
+		s.App.QueueUpdateDraw(func() {
+			if s.NotifView != nil {
+				var fullText string
+				s.mu.RLock()
+				for _, n := range s.NotificationList {
+					fullText += fmt.Sprintf("  [yellow]⚡[white] %s\n  [gray]────────────────────────────────────────────────────────────[white]\n", n)
+				}
+				s.mu.RUnlock()
+				s.NotifView.SetText(fullText)
 			}
-			s.mu.RUnlock()
-			s.NotifView.SetText(fullText)
-		}
+		})
 		s.SetStatus(fmt.Sprintf("[yellow]🔔 %s[white]", notif))
-	})
+	}()
 }
 

@@ -89,21 +89,28 @@ func (c *UIController) clearNotifications() {
 }
 
 func (c *UIController) triggerDemoChapterRelease() {
-	mangaID := "manga_001"
+	mangaID := "one-piece"
 	title := "One Piece"
-	targetChapter := 1115
+	targetChapter := 1105
+
+	c.state.mu.RLock()
+	if len(c.state.MangaCatalog) > 0 {
+		m := c.state.MangaCatalog[0]
+		mangaID = m.ID
+		title = m.Title
+		targetChapter = int(m.TotalChapters) + 1
+	}
+	c.state.mu.RUnlock()
 
 	c.state.SetStatus(fmt.Sprintf("[yellow]Triggering demo release for %s (Ch. %d)...[white]", title, targetChapter))
 
 	go func() {
 		err := c.api.TriggerRelease(mangaID, targetChapter, title)
-		c.state.App.QueueUpdateDraw(func() {
-			if err != nil {
-				c.state.SetStatus(fmt.Sprintf("[red]Release failed: %v[white]", err))
-				return
-			}
-			c.state.SetStatus(fmt.Sprintf("[green]Demo release sent! Waiting for UDP datagram on :9091...[white]"))
-		})
+		if err != nil {
+			c.state.SetStatus(fmt.Sprintf("[red]Release failed: %v[white]", err))
+			return
+		}
+		c.state.SetStatus("[green]Demo release sent! Waiting for UDP datagram on :9091...[white]")
 	}()
 }
 

@@ -116,6 +116,7 @@ func (c *ChatClient) readPump(conn *websocket.Conn, room string) {
 		c.state.App.QueueUpdateDraw(func() {
 			if c.state.ChatMessagesView != nil {
 				c.state.ChatMessagesView.Write([]byte(formatted))
+				c.state.ChatMessagesView.ScrollToEnd()
 			}
 		})
 	}

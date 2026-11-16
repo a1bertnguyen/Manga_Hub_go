@@ -40,8 +40,8 @@ func (c *UIController) RestoreSession() {
 		c.onLoginSuccess()
 		c.state.SetStatus(fmt.Sprintf("[green]Restored session for %s from .tui_session.json[white]", sess.Username))
 	} else {
-		// Default to browser view for guest exploration
-		c.SwitchTab("browser")
+		// Default to auth tab for clean login / register / guest experience
+		c.SwitchTab("auth")
 	}
 }
 
@@ -208,7 +208,9 @@ func (c *UIController) SwitchTab(tab string) {
 		}
 	case "discussion":
 		if c.state.Username != "" && !c.state.WSConnected {
-			_ = c.chat.Connect(c.state.ActiveRoom)
+			go func() {
+				_ = c.chat.Connect(c.state.ActiveRoom)
+			}()
 		}
 	case "notifications":
 		c.renderNotificationsList()

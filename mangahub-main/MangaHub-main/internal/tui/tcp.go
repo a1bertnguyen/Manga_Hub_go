@@ -179,11 +179,11 @@ func (w *TCPWorker) connectAndListen(stopChan chan struct{}) {
 					w.state.mu.RUnlock()
 					populateLibraryTable(w.state.LibraryTable, items, w.state.MangaCatalog)
 				}
-				w.state.SetStatus(fmt.Sprintf(
-					"[green]⚡ [TCP Sync][white] %s -> Chapter %d (v%d)",
-					title, event.Chapter, event.Version,
-				))
 			})
+			w.state.SetStatus(fmt.Sprintf(
+				"[green]⚡ [TCP Sync][white] %s -> Chapter %d (v%d)",
+				title, event.Chapter, event.Version,
+			))
 		}
 	}
 

@@ -68,7 +68,7 @@ func (s *MangaServiceServer) SearchManga(ctx context.Context, req *pb.SearchMang
 		args = append(args, "%"+req.Genre+"%")
 	}
 
-	query += " LIMIT 20"
+	query += " LIMIT 100"
 
 	rows, err := s.db.QueryContext(ctx, query, args...)
 	if err != nil {

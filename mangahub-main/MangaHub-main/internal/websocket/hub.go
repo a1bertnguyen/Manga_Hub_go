@@ -119,6 +119,7 @@ func (h *Hub) Run() {
 			}
 
 			// Send message to clients in the same room
+			var droppedClients []*Client
 			h.mu.RLock()
 			if roomClients, exists := h.rooms[msg.Room]; exists {
 				for client := range roomClients {
@@ -126,14 +127,28 @@ func (h *Hub) Run() {
 					case client.Send <- data:
 						// Message sent successfully
 					default:
-						// Client send buffer full → disconnect
-						close(client.Send)
-						delete(h.clients, client)
-						delete(roomClients, client)
+						// Client send buffer full → mark for disconnection
+						droppedClients = append(droppedClients, client)
 					}
 				}
 			}
 			h.mu.RUnlock()
+
+			// Safely clean up disconnected clients under write lock
+			if len(droppedClients) > 0 {
+				h.mu.Lock()
+				for _, client := range droppedClients {
+					close(client.Send)
+					delete(h.clients, client)
+					if roomClients, exists := h.rooms[client.Room]; exists {
+						delete(roomClients, client)
+						if len(roomClients) == 0 {
+							delete(h.rooms, client.Room)
+						}
+					}
+				}
+				h.mu.Unlock()
+			}
 		}
 	}
 }

@@ -73,7 +73,9 @@ func (c *UIController) buildDiscussionView() tview.Primitive {
 		if c.state.ActiveRoom != cleanRoom {
 			c.state.ActiveRoom = cleanRoom
 			if c.state.Username != "" {
-				_ = c.chat.Connect(cleanRoom)
+				go func() {
+					_ = c.chat.Connect(cleanRoom)
+				}()
 			} else {
 				c.state.ChatMessagesView.SetText(fmt.Sprintf(
 					"\n [yellow:b]=== Switched to Room: #%s ===[-:-:-]\n"+
