@@ -75,7 +75,9 @@ func uiDo(t *testing.T, c *UIController, fn func()) {
 func uiKey(c *UIController, key tcell.Key, char rune) {
 	event := c.state.App.GetInputCapture()(tcell.NewEventKey(key, char, tcell.ModNone))
 	if event != nil {
-		if handler := c.state.App.GetFocus().InputHandler(); handler != nil {
+		// Follow production dispatch through the page/container hierarchy instead
+		// of bypassing it by calling the focused field's handler directly.
+		if handler := c.state.Pages.InputHandler(); handler != nil {
 			handler(event, func(p tview.Primitive) { c.state.App.SetFocus(p) })
 		}
 	}

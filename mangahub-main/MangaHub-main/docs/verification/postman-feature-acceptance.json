@@ -450,7 +450,7 @@
     {
       "name": "TestLiveFeatureAcceptanceTUI",
       "passed": true,
-      "observed": "=== RUN   TestLiveFeatureAcceptanceTUI\n2026/11/20 17:00:41 [TUI TCP] Disconnected from 127.0.0.1:50785\n    feature_acceptance_test.go:112: F01 PASS: actual Register/Login/Logout buttons and wrong-password feedback through the running TUI\n    feature_acceptance_test.go:147: F02 PASS: title search, selected metadata (all six fields), and visible no-result state over real HTTP -> gRPC\n    feature_acceptance_test.go:229: F03 PASS: add dialog, all three statuses, progress edit, peer redraw without refresh, different-account isolation, invalid chapter error and unchanged stored version\n    feature_acceptance_test.go:259: F04 PASS: user-triggered release and unsubscribe keys; notifications rendered in two TUIs, unsubscribed peer receives no second alert\n    feature_acceptance_test.go:309: F05 PASS: actual room selection and send input, bidirectional rendered chat, room isolation, peer disconnect and responsive navigation\n2026/11/20 17:00:49 [TUI TCP] Disconnected from 127.0.0.1:50785\n2026/11/20 17:00:49 [TUI TCP] Disconnected from 127.0.0.1:50785\n2026/11/20 17:00:49 [TUI TCP] Disconnected from 127.0.0.1:50785\n--- PASS: TestLiveFeatureAcceptanceTUI (9.38s)\nPASS\nok  \tmangahub/internal/tui\t10.905s\n"
+      "observed": "=== RUN   TestLiveFeatureAcceptanceTUI\n2026/11/20 21:42:51 [TUI TCP] Disconnected from 127.0.0.1:56875\n    feature_acceptance_test.go:112: F01 PASS: actual Register/Login/Logout buttons and wrong-password feedback through the running TUI\n    feature_acceptance_test.go:147: F02 PASS: title search, selected metadata (all six fields), and visible no-result state over real HTTP -> gRPC\n    feature_acceptance_test.go:229: F03 PASS: add dialog, all three statuses, progress edit, peer redraw without refresh, different-account isolation, invalid chapter error and unchanged stored version\n    feature_acceptance_test.go:259: F04 PASS: user-triggered release and unsubscribe keys; notifications rendered in two TUIs, unsubscribed peer receives no second alert\n    feature_acceptance_test.go:309: F05 PASS: actual room selection and send input, bidirectional rendered chat, room isolation, peer disconnect and responsive navigation\n2026/11/20 21:42:55 [TUI TCP] Disconnected from 127.0.0.1:56875\n2026/11/20 21:42:55 [TUI TCP] Disconnected from 127.0.0.1:56875\n2026/11/20 21:42:55 [TUI TCP] Disconnected from 127.0.0.1:56875\n--- PASS: TestLiveFeatureAcceptanceTUI (5.97s)\nPASS\nok  \tmangahub/internal/tui\t7.538s\n"
     },
     {
       "name": "Unavailable UDP receiver",
@@ -460,7 +460,7 @@
     {
       "name": "TestLiveCatalogUnavailableTUI",
       "passed": true,
-      "observed": "=== RUN   TestLiveCatalogUnavailableTUI\n    feature_acceptance_test.go:326: F02/F06 PASS: stopped real catalog -> visible HTTP 503 in TUI, keyboard navigation stays responsive\n--- PASS: TestLiveCatalogUnavailableTUI (0.16s)\nPASS\nok  \tmangahub/internal/tui\t1.779s\n"
+      "observed": "=== RUN   TestLiveCatalogUnavailableTUI\n    feature_acceptance_test.go:326: F02/F06 PASS: stopped real catalog -> visible HTTP 503 in TUI, keyboard navigation stays responsive\n--- PASS: TestLiveCatalogUnavailableTUI (0.18s)\nPASS\nok  \tmangahub/internal/tui\t1.870s\n"
     },
     {
       "name": "SQLite password hash survives restart",

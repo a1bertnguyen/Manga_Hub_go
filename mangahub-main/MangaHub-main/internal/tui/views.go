@@ -328,6 +328,15 @@ func (p *centeredPrimitive) Draw(screen tcell.Screen) {
 
 func (p *centeredPrimitive) Focus(delegate func(tview.Primitive)) { delegate(p.child) }
 func (p *centeredPrimitive) HasFocus() bool                       { return p.child.HasFocus() }
+
+// tview dispatches events from the root through every container, even when the
+// focused primitive is a nested field. Box's default handlers do nothing.
+func (p *centeredPrimitive) InputHandler() func(*tcell.EventKey, func(tview.Primitive)) {
+	return p.WrapInputHandler(p.child.InputHandler())
+}
+func (p *centeredPrimitive) PasteHandler() func(string, func(tview.Primitive)) {
+	return p.WrapPasteHandler(p.child.PasteHandler())
+}
 func (p *centeredPrimitive) MouseHandler() func(tview.MouseAction, *tcell.EventMouse, func(tview.Primitive)) (bool, tview.Primitive) {
 	return p.child.MouseHandler()
 }

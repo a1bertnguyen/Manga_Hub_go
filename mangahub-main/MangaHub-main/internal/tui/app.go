@@ -45,10 +45,10 @@ func Run() error {
 
 	controller := NewUIController(state, api, tcp, udp, chat)
 	rootLayout := controller.SetupLayout()
+	app.SetRoot(rootLayout, true).EnableMouse(true).EnablePaste(true)
 
-	// Try to restore saved session if exists
+	// SetRoot resets focus, so choose the initial page only after mounting it.
 	controller.RestoreSession()
 
-	app.SetRoot(rootLayout, true).EnableMouse(true)
 	return app.Run()
 }

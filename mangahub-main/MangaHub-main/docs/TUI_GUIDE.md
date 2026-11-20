@@ -18,6 +18,14 @@ Open Account with F10 to register or log in. Catalog access requires authenticat
 
 Catalog, backend and TUI automatically load `.env.local` from the working directory. Keep the file in the Go module directory used above. Existing PowerShell environment variables take priority; open a fresh terminal if an old override should no longer apply. Restart programs after editing the file. The local file is ignored by Git.
 
+## Keyboard input regression fix
+
+The centered Account/Profile and progress-dialog container previously forwarded focus and mouse events but inherited `Box`'s empty keyboard/paste handlers. As a result, terminal key events passed through the root layout and stopped at that container before reaching the visible input or button. The older test helper called the focused field directly, bypassing this failing path.
+
+The container now forwards keyboard and paste events to its child, terminal paste is enabled, and the root is mounted before session restoration chooses the initial focus. The helper now dispatches through Pages. Four additional tests inject events through the actual tcell/tview event loop and cover startup typing, mouse navigation followed by login submission, progress editing/paste, search/chat text, and Tab/Shift+Tab navigation. See [the retained TUI regression output](verification/tui-input-regression.txt).
+
+If an older TUI process is still running, exit it with Ctrl+C and rerun `go run ./cmd/tui` from the module directory. The backend and catalog can remain running for this client-only fix. PowerShell/Windows Terminal is supported.
+
 ## Navigation
 
 | Key | Action |

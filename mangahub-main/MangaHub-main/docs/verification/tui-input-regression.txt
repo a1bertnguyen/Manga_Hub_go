@@ -1,0 +1,39 @@
+=== RUN   TestLiveFeatureAcceptanceTUI
+    feature_acceptance_test.go:78: run python scripts/verify_postman.py
+--- SKIP: TestLiveFeatureAcceptanceTUI (0.00s)
+=== RUN   TestLiveCatalogUnavailableTUI
+    feature_acceptance_test.go:315: run python scripts/verify_postman.py
+--- SKIP: TestLiveCatalogUnavailableTUI (0.00s)
+=== RUN   TestLiveConnectedTUI
+    live_integration_test.go:20: run python scripts/verify_connected.py --with-tui
+--- SKIP: TestLiveConnectedTUI (0.00s)
+=== RUN   TestAPIProgressUsesTCPSession
+--- PASS: TestAPIProgressUsesTCPSession (0.01s)
+=== RUN   TestRedesignFocusAndTextInput
+--- PASS: TestRedesignFocusAndTextInput (0.09s)
+=== RUN   TestRedesignCatalogHTTPContract
+--- PASS: TestRedesignCatalogHTTPContract (0.00s)
+=== RUN   TestRedesignIgnoresStaleMangaDetails
+--- PASS: TestRedesignIgnoresStaleMangaDetails (1.06s)
+=== RUN   TestRedesignProgressDialogKeepsFocus
+--- PASS: TestRedesignProgressDialogKeepsFocus (0.05s)
+=== RUN   TestRedesignUDPStopUnsubscribes
+--- PASS: TestRedesignUDPStopUnsubscribes (0.00s)
+=== RUN   TestRedesignChatConnectDoesNotWaitForEventLoop
+--- PASS: TestRedesignChatConnectDoesNotWaitForEventLoop (0.05s)
+=== RUN   TestRedesignScreens
+--- PASS: TestRedesignScreens (0.37s)
+=== RUN   TestRootDispatchAccountTyping
+--- PASS: TestRootDispatchAccountTyping (0.54s)
+=== RUN   TestRootMouseClickAndAccountSubmit
+--- PASS: TestRootMouseClickAndAccountSubmit (0.59s)
+=== RUN   TestRootProgressDialogInputAndPaste
+--- PASS: TestRootProgressDialogInputAndPaste (0.31s)
+=== RUN   TestRootSearchAndDiscussionTyping
+--- PASS: TestRootSearchAndDiscussionTyping (0.91s)
+=== RUN   TestSession_SaveLoadClear
+--- PASS: TestSession_SaveLoadClear (0.00s)
+=== RUN   TestUIController_SetupLayout
+--- PASS: TestUIController_SetupLayout (0.00s)
+PASS
+ok  	mangahub/internal/tui	5.621s
