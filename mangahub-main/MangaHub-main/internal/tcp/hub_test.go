@@ -53,7 +53,7 @@ func TestHub_UserIsolation(t *testing.T) {
 		Status:         "reading",
 		Version:        3,
 	}
-	hub.BroadcastProgress(update, "alice", "One Piece")
+	hub.BroadcastProgress(update, "alice", "One Piece", "")
 
 	// Verify clientA1 received the update
 	select {
@@ -117,4 +117,3 @@ func TestHub_Unregister(t *testing.T) {
 		t.Errorf("Expected client.Send channel to be closed after unregistering")
 	}
 }
-

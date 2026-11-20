@@ -1,9 +1,9 @@
 {
   "info": {
     "_postman_id": "d8f4b3e1-9c2a-4f10-8a7e-5b3c1d2e4f60",
-    "name": "MangaHub API (IT096IIU)",
-    "description": "Complete Postman Collection for MangaHub Net-Centric Programming (IT096IIU) backend.\n\nIncludes:\n1. System Health Check (HTTP, gRPC, TCP, UDP, WebSocket status)\n2. Auth (Register, Duplicate 409, Validation 400, Login 200, Unauthorized 401)\n3. Manga Catalog via gRPC (:9092) (List, Search, Filter, Detail, 404, 401)\n4. Reading Library & TCP Sync (:9090) (Add, Get, Update Progress, Max Chapter 400, Not Found 404)\n5. Admin Chapter Release & UDP Broadcast (:9091)\n6. Legacy Web UI Compatibility Aliases\n7. Fault Injection Verification (gRPC 2s Deadline -> HTTP 503)\n\nHow to run:\n- Import this single file into Postman.\n- Ensure Catalog (:9092) and Backend (:8080) are running.\n- Run the entire collection via Collection Runner, or start with 'Register New User' (it automatically saves {{token}} for all protected requests!).",
-    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+    "name": "MangaHub - F01-F06 Acceptance API",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "Run folders 01-05 and 07 in order with both services running. Fresh demo users, JWT and real manga IDs are saved automatically. Admin release, catalog outage and restart folders are opt-in. HTTP assertions are not proof of TCP/UDP/TUI delivery. See POSTMAN_GUIDE.md for live TUI, WebSocket and gRPC checks."
   },
   "auth": {
     "type": "bearer",
@@ -19,6 +19,51 @@
     {
       "key": "baseUrl",
       "value": "http://localhost:8080",
+      "type": "string"
+    },
+    {
+      "key": "wsUrl",
+      "value": "ws://localhost:8080/ws",
+      "type": "string"
+    },
+    {
+      "key": "grpcAddress",
+      "value": "localhost:9092",
+      "type": "string"
+    },
+    {
+      "key": "tcpAddress",
+      "value": "localhost:9090",
+      "type": "string"
+    },
+    {
+      "key": "udpAddress",
+      "value": "localhost:9091",
+      "type": "string"
+    },
+    {
+      "key": "adminKey",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "runAdminDemo",
+      "value": "false",
+      "type": "string"
+    },
+    {
+      "key": "runFaultChecks",
+      "value": "false",
+      "type": "string"
+    },
+    {
+      "key": "runRecoveryChecks",
+      "value": "false",
+      "type": "string"
+    },
+    {
+      "key": "wsRoom",
+      "value": "general",
       "type": "string"
     },
     {
@@ -38,1067 +83,1737 @@
     },
     {
       "key": "testUsername",
-      "value": "postman_user",
+      "value": "",
       "type": "string"
     },
     {
       "key": "testEmail",
-      "value": "postman_user@example.com",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "password",
+      "value": "",
       "type": "string"
     },
     {
       "key": "mangaId",
-      "value": "one-piece",
+      "value": "",
       "type": "string"
     },
     {
-      "key": "unusedMangaId",
-      "value": "slamdunk",
+      "key": "otherMangaId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "mangaTitle",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "searchQuery",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "genre",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "totalChapters",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "overflowChapter",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "targetChapter",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "expectedChapter",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "lastVersion",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "newChapter",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "bobToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "bobUserId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "bobUsername",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "bobEmail",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "bobPassword",
+      "value": "",
       "type": "string"
     }
   ],
   "item": [
     {
-      "name": "1. System & Health",
+      "name": "01 - Health",
+      "description": "",
       "item": [
         {
-          "name": "Health Check (All 5 Protocols)",
+          "name": "Backend and catalog ready",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/health",
+            "description": "This proves HTTP and the catalog RPC respond. It does not prove TCP/UDP client delivery.",
+            "auth": {
+              "type": "noauth"
+            }
+          },
           "event": [
             {
               "listen": "test",
               "script": {
+                "type": "text/javascript",
                 "exec": [
-                  "pm.test(\"Status code is 200 OK\", function () {",
-                  "    pm.response.to.have.status(200);",
-                  "});",
-                  "",
-                  "const jsonData = pm.response.json();",
-                  "pm.test(\"Backend reports healthy with all 5 protocol services\", function () {",
-                  "    pm.expect(jsonData.status).to.eql(\"healthy\");",
-                  "    pm.expect(jsonData.services).to.have.property(\"http\");",
-                  "    pm.expect(jsonData.services).to.have.property(\"tcp\");",
-                  "    pm.expect(jsonData.services).to.have.property(\"udp\");",
-                  "    pm.expect(jsonData.services).to.have.property(\"websocket\");",
-                  "    pm.expect(jsonData.services).to.have.property(\"grpc_catalog\");",
-                  "});",
-                  "",
-                  "pm.test(\"gRPC Catalog service is connected\", function () {",
-                  "    pm.expect(jsonData.services.grpc_catalog).to.eql(\"connected\");",
-                  "});"
-                ],
-                "type": "text/javascript"
+                  "(() => {",
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Catalog connected\", () => pm.expect(pm.response.json().services.grpc_catalog).to.eql(\"connected\"));",
+                  "})();"
+                ]
               }
             }
           ],
-          "request": {
-            "auth": {
-              "type": "noauth"
-            },
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/health",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "health"
-              ]
-            },
-            "description": "Verifies HTTP REST (:8080), TCP Sync (:9090), UDP (:9091), WebSocket (/ws), and gRPC Catalog (:9092) connectivity."
-          },
           "response": []
         }
       ]
     },
     {
-      "name": "2. Authentication",
+      "name": "02 - F01 Accounts",
+      "description": "Registration generates fresh credentials on each run. JWT values stay in the active local environment; do not share an environment containing live credentials.",
       "item": [
         {
-          "name": "Register New User (200 OK - Auto Save Token)",
+          "name": "Register a fresh demo account",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/auth/register",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"{{testUsername}}\",\n  \"password\": \"{{password}}\",\n  \"email\": \"{{testEmail}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
           "event": [
             {
               "listen": "prerequest",
               "script": {
+                "type": "text/javascript",
                 "exec": [
-                  "const uniqueId = Date.now() + \"_\" + Math.floor(Math.random() * 1000);",
-                  "pm.collectionVariables.set(\"testUsername\", \"postman_\" + uniqueId);",
-                  "pm.collectionVariables.set(\"testEmail\", \"postman_\" + uniqueId + \"@example.com\");"
-                ],
-                "type": "text/javascript"
+                  "(() => {",
+                  "const save = (key, value) => { pm.collectionVariables.set(key, value); pm.environment.set(key, value); };",
+                  "",
+                  "const suffix = pm.variables.replaceIn(\"{{$guid}}\").replace(/-/g, \"\");",
+                  "save(\"testUsername\", \"pm_\" + suffix);",
+                  "save(\"testEmail\", \"pm_\" + suffix + \"@example.test\");",
+                  "save(\"password\", \"MangaHub_demo_\" + suffix + \"!\");",
+                  "save(\"token\", \"\"); save(\"userId\", \"\");",
+                  "})();"
+                ]
               }
             },
             {
               "listen": "test",
               "script": {
+                "type": "text/javascript",
                 "exec": [
-                  "pm.test(\"Status code is 200 OK\", function () {",
-                  "    pm.response.to.have.status(200);",
-                  "});",
+                  "(() => {",
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "const save = (key, value) => { pm.collectionVariables.set(key, value); pm.environment.set(key, value); };",
                   "",
-                  "const jsonData = pm.response.json();",
-                  "pm.test(\"Returns JWT token, user_id, and username\", function () {",
-                  "    pm.expect(jsonData.token).to.be.a(\"string\").and.not.empty;",
-                  "    pm.expect(jsonData.user_id).to.be.a(\"string\").and.not.empty;",
-                  "    pm.expect(jsonData.username).to.eql(pm.collectionVariables.get(\"testUsername\"));",
+                  "const data = pm.response.json();",
+                  "pm.test(\"JWT and verified identity returned\", () => {",
+                  "  pm.expect(data.token).to.be.a(\"string\").and.not.empty;",
+                  "  pm.expect(data.user_id).to.be.a(\"string\").and.not.empty;",
+                  "  pm.expect(data.username).to.eql(pm.variables.get(\"testUsername\"));",
                   "});",
-                  "",
-                  "if (jsonData.token) {",
-                  "    pm.collectionVariables.set(\"token\", jsonData.token);",
-                  "    pm.collectionVariables.set(\"userId\", jsonData.user_id);",
-                  "    pm.collectionVariables.set(\"username\", jsonData.username);",
-                  "}"
-                ],
-                "type": "text/javascript"
+                  "if (pm.response.code === 200) { save(\"token\",data.token); save(\"userId\",data.user_id); save(\"username\",data.username); }",
+                  "})();"
+                ]
               }
             }
           ],
+          "response": []
+        },
+        {
+          "name": "Duplicate username is rejected",
           "request": {
-            "auth": {
-              "type": "noauth"
-            },
             "method": "POST",
             "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
               {
                 "key": "Content-Type",
                 "value": "application/json"
               }
             ],
+            "url": "{{baseUrl}}/api/auth/register",
+            "description": "",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"username\": \"{{testUsername}}\",\n  \"email\": \"{{testEmail}}\",\n  \"password\": \"password123\"\n}",
+              "raw": "{\n  \"username\": \"{{testUsername}}\",\n  \"password\": \"{{password}}\",\n  \"email\": \"{{testEmail}}\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
                 }
               }
             },
-            "url": {
-              "raw": "{{baseUrl}}/api/auth/register",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "auth",
-                "register"
-              ]
-            },
-            "description": "Generates a fresh user on each run and automatically stores {{token}}, {{userId}}, and {{username}} into Collection Variables."
+            "auth": {
+              "type": "noauth"
+            }
           },
-          "response": []
-        },
-        {
-          "name": "Register Duplicate User/Email (409 Conflict)",
           "event": [
             {
               "listen": "test",
               "script": {
+                "type": "text/javascript",
                 "exec": [
-                  "pm.test(\"Status code is 409 Conflict\", function () {",
-                  "    pm.response.to.have.status(409);",
-                  "});",
-                  "",
-                  "const jsonData = pm.response.json();",
-                  "pm.test(\"Returns duplicate error message\", function () {",
-                  "    pm.expect(jsonData.error).to.be.a(\"string\").and.not.empty;",
-                  "});"
-                ],
-                "type": "text/javascript"
+                  "(() => {",
+                  "pm.test(\"HTTP 409\", () => pm.response.to.have.status(409));",
+                  "pm.test(\"Structured error\", () => pm.expect(pm.response.json().error).to.be.a(\"string\").and.not.empty);",
+                  "})();"
+                ]
               }
             }
           ],
+          "response": []
+        },
+        {
+          "name": "Short password is rejected",
           "request": {
-            "auth": {
-              "type": "noauth"
-            },
             "method": "POST",
             "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
               {
                 "key": "Content-Type",
                 "value": "application/json"
               }
             ],
+            "url": "{{baseUrl}}/api/auth/register",
+            "description": "",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"username\": \"{{testUsername}}\",\n  \"email\": \"{{testEmail}}\",\n  \"password\": \"password123\"\n}",
+              "raw": "{\n  \"username\": \"invalid_demo\",\n  \"email\": \"invalid@example.test\",\n  \"password\": \"short\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
                 }
               }
             },
-            "url": {
-              "raw": "{{baseUrl}}/api/auth/register",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "auth",
-                "register"
-              ]
-            },
-            "description": "Re-submits the exact same username/email from the previous request to verify HTTP 409 Conflict handling (no 500 error)."
+            "auth": {
+              "type": "noauth"
+            }
           },
-          "response": []
-        },
-        {
-          "name": "Register Short Password < 8 Chars (400 Bad Request)",
           "event": [
             {
               "listen": "test",
               "script": {
+                "type": "text/javascript",
                 "exec": [
-                  "pm.test(\"Status code is 400 Bad Request\", function () {",
-                  "    pm.response.to.have.status(400);",
-                  "});",
-                  "",
-                  "const jsonData = pm.response.json();",
-                  "pm.test(\"Error mentions Password min validation\", function () {",
-                  "    pm.expect(jsonData.error).to.include(\"Password\");",
-                  "});"
-                ],
-                "type": "text/javascript"
+                  "(() => {",
+                  "pm.test(\"HTTP 400\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"Structured error\", () => pm.expect(pm.response.json().error).to.be.a(\"string\").and.not.empty);",
+                  "})();"
+                ]
               }
             }
           ],
+          "response": []
+        },
+        {
+          "name": "Successful login and save JWT",
           "request": {
-            "auth": {
-              "type": "noauth"
-            },
             "method": "POST",
             "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
               {
                 "key": "Content-Type",
                 "value": "application/json"
               }
             ],
+            "url": "{{baseUrl}}/api/auth/login",
+            "description": "",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"username\": \"short_pw_user\",\n  \"email\": \"shortpw@example.com\",\n  \"password\": \"123\"\n}",
+              "raw": "{\n  \"username\": \"{{testUsername}}\",\n  \"password\": \"{{password}}\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
                 }
               }
             },
-            "url": {
-              "raw": "{{baseUrl}}/api/auth/register",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "auth",
-                "register"
-              ]
+            "auth": {
+              "type": "noauth"
             }
           },
-          "response": []
-        },
-        {
-          "name": "Login Valid User (200 OK - Refresh Token)",
           "event": [
             {
               "listen": "test",
               "script": {
+                "type": "text/javascript",
                 "exec": [
-                  "pm.test(\"Status code is 200 OK\", function () {",
-                  "    pm.response.to.have.status(200);",
-                  "});",
+                  "(() => {",
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "const save = (key, value) => { pm.collectionVariables.set(key, value); pm.environment.set(key, value); };",
                   "",
-                  "const jsonData = pm.response.json();",
-                  "pm.test(\"Login returns valid JWT token\", function () {",
-                  "    pm.expect(jsonData.token).to.be.a(\"string\").and.not.empty;",
+                  "const data = pm.response.json();",
+                  "pm.test(\"JWT and verified identity returned\", () => {",
+                  "  pm.expect(data.token).to.be.a(\"string\").and.not.empty;",
+                  "  pm.expect(data.user_id).to.be.a(\"string\").and.not.empty;",
+                  "  pm.expect(data.username).to.eql(pm.variables.get(\"testUsername\"));",
                   "});",
-                  "",
-                  "if (jsonData.token) {",
-                  "    pm.collectionVariables.set(\"token\", jsonData.token);",
-                  "}"
-                ],
-                "type": "text/javascript"
+                  "if (pm.response.code === 200) { save(\"token\",data.token); save(\"userId\",data.user_id); save(\"username\",data.username); }",
+                  "})();"
+                ]
               }
             }
           ],
+          "response": []
+        },
+        {
+          "name": "Wrong password is rejected",
           "request": {
-            "auth": {
-              "type": "noauth"
-            },
             "method": "POST",
             "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
               {
                 "key": "Content-Type",
                 "value": "application/json"
               }
             ],
+            "url": "{{baseUrl}}/api/auth/login",
+            "description": "",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"username\": \"{{testUsername}}\",\n  \"password\": \"password123\"\n}",
+              "raw": "{\n  \"username\": \"{{testUsername}}\",\n  \"password\": \"deliberately-wrong-password\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
                 }
               }
             },
-            "url": {
-              "raw": "{{baseUrl}}/api/auth/login",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "auth",
-                "login"
-              ]
+            "auth": {
+              "type": "noauth"
             }
           },
-          "response": []
-        },
-        {
-          "name": "Login Wrong Password (401 Unauthorized)",
           "event": [
             {
               "listen": "test",
               "script": {
+                "type": "text/javascript",
                 "exec": [
-                  "pm.test(\"Status code is 401 Unauthorized\", function () {",
-                  "    pm.response.to.have.status(401);",
-                  "});",
-                  "",
-                  "const jsonData = pm.response.json();",
-                  "pm.test(\"Returns Invalid credentials error\", function () {",
-                  "    pm.expect(jsonData.error).to.eql(\"Invalid credentials\");",
-                  "});"
-                ],
-                "type": "text/javascript"
+                  "(() => {",
+                  "pm.test(\"HTTP 401\", () => pm.response.to.have.status(401));",
+                  "pm.test(\"Structured error\", () => pm.expect(pm.response.json().error).to.be.a(\"string\").and.not.empty);",
+                  "})();"
+                ]
               }
             }
           ],
+          "response": []
+        },
+        {
+          "name": "Protected library without token",
           "request": {
-            "auth": {
-              "type": "noauth"
-            },
-            "method": "POST",
+            "method": "GET",
             "header": [
               {
-                "key": "Content-Type",
+                "key": "Accept",
                 "value": "application/json"
               }
             ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"username\": \"{{testUsername}}\",\n  \"password\": \"wrongpassword123\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
+            "url": "{{baseUrl}}/api/library",
+            "description": "",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "(() => {",
+                  "pm.test(\"HTTP 401\", () => pm.response.to.have.status(401));",
+                  "pm.test(\"Structured error\", () => pm.expect(pm.response.json().error).to.be.a(\"string\").and.not.empty);",
+                  "})();"
+                ]
               }
-            },
-            "url": {
-              "raw": "{{baseUrl}}/api/auth/login",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "auth",
-                "login"
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Protected catalog with invalid JWT",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/manga",
+            "description": "",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "not-a-valid-jwt",
+                  "type": "string"
+                }
               ]
             }
           },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "(() => {",
+                  "pm.test(\"HTTP 401\", () => pm.response.to.have.status(401));",
+                  "pm.test(\"Structured error\", () => pm.expect(pm.response.json().error).to.be.a(\"string\").and.not.empty);",
+                  "})();"
+                ]
+              }
+            }
+          ],
           "response": []
         }
       ]
     },
     {
-      "name": "3. Manga Catalog (HTTP -> gRPC :9092)",
+      "name": "03 - F02 F06 Catalog",
+      "description": "Gin calls the separately running gRPC catalog; these are HTTP requests exercising that boundary indirectly.",
       "item": [
         {
-          "name": "List All Manga (200 OK)",
+          "name": "List catalog and select real manga IDs",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/manga",
+            "description": ""
+          },
           "event": [
             {
               "listen": "test",
               "script": {
+                "type": "text/javascript",
                 "exec": [
-                  "pm.test(\"Status code is 200 OK\", function () {",
-                  "    pm.response.to.have.status(200);",
-                  "});",
-                  "",
-                  "const jsonData = pm.response.json();",
-                  "pm.test(\"Returns manga array and count (up to LIMIT 20)\", function () {",
-                  "    pm.expect(jsonData.manga).to.be.an(\"array\").and.not.empty;",
-                  "    pm.expect(jsonData.count).to.eql(jsonData.manga.length);",
-                  "    pm.expect(jsonData.count).to.be.at.least(1);",
-                  "});"
-                ],
-                "type": "text/javascript"
+                  "(() => {",
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "const save = (key, value) => { pm.collectionVariables.set(key, value); pm.environment.set(key, value); };",
+                  "pm.test(\"Catalog response\", () => { const d=pm.response.json(); pm.expect(d.manga).to.be.an(\"array\"); pm.expect(d.count).to.eql(d.manga.length); });",
+                  "            const list=pm.response.json().manga;",
+                  "            pm.test(\"At least 30 seeded titles\", () => pm.expect(list.length).to.be.at.least(30));",
+                  "            if (list.length >= 2) {",
+                  "              const m=list[0]; save(\"mangaId\",m.id); save(\"otherMangaId\",list[1].id);",
+                  "              save(\"mangaTitle\",m.title); save(\"searchQuery\",m.title.split(\" \")[0]);",
+                  "              save(\"genre\",m.genres[0]); save(\"totalChapters\",Number(m.total_chapters||0));",
+                  "              save(\"overflowChapter\",Number(m.total_chapters||0)+1);",
+                  "            }",
+                  "})();"
+                ]
               }
             }
           ],
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/manga",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "manga"
-              ]
-            }
-          },
           "response": []
         },
         {
-          "name": "Search Manga by Query (?q=One)",
+          "name": "Search by title",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/manga?q={{searchQuery}}",
+            "description": ""
+          },
           "event": [
             {
               "listen": "test",
               "script": {
+                "type": "text/javascript",
                 "exec": [
-                  "pm.test(\"Status code is 200 OK\", function () {",
-                  "    pm.response.to.have.status(200);",
-                  "});",
-                  "",
-                  "const jsonData = pm.response.json();",
-                  "pm.test(\"Finds matching manga (One Piece)\", function () {",
-                  "    pm.expect(jsonData.manga).to.be.an(\"array\").and.not.empty;",
-                  "    const titles = jsonData.manga.map(m => m.title);",
-                  "    pm.expect(titles).to.include(\"One Piece\");",
-                  "});"
-                ],
-                "type": "text/javascript"
+                  "(() => {",
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Catalog response\", () => { const d=pm.response.json(); pm.expect(d.manga).to.be.an(\"array\"); pm.expect(d.count).to.eql(d.manga.length); });pm.test(\"Selected title found\", () => pm.expect(pm.response.json().manga.some(m=>m.id===pm.variables.get(\"mangaId\"))).to.eql(true));",
+                  "})();"
+                ]
               }
             }
           ],
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/manga?q=One",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "manga"
-              ],
-              "query": [
-                {
-                  "key": "q",
-                  "value": "One"
-                }
-              ]
-            }
-          },
           "response": []
         },
         {
-          "name": "Filter Manga by Genre (?genre=Action)",
+          "name": "Filter by genre",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/manga?genre={{genre}}",
+            "description": ""
+          },
           "event": [
             {
               "listen": "test",
               "script": {
+                "type": "text/javascript",
                 "exec": [
-                  "pm.test(\"Status code is 200 OK\", function () {",
-                  "    pm.response.to.have.status(200);",
-                  "});",
-                  "",
-                  "const jsonData = pm.response.json();",
-                  "pm.test(\"Returns Action genre manga items\", function () {",
-                  "    pm.expect(jsonData.manga).to.be.an(\"array\").and.not.empty;",
-                  "    pm.expect(jsonData.manga[0].genres).to.include(\"Action\");",
-                  "});"
-                ],
-                "type": "text/javascript"
+                  "(() => {",
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Catalog response\", () => { const d=pm.response.json(); pm.expect(d.manga).to.be.an(\"array\"); pm.expect(d.count).to.eql(d.manga.length); });pm.test(\"Genre filter applied\", () => { pm.expect(pm.response.json().count).to.be.above(0); pm.response.json().manga.forEach(m=>pm.expect(m.genres.join(\",\").toLowerCase()).to.include(String(pm.variables.get(\"genre\")).toLowerCase())); });",
+                  "})();"
+                ]
               }
             }
           ],
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/manga?genre=Action",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "manga"
-              ],
-              "query": [
-                {
-                  "key": "genre",
-                  "value": "Action"
-                }
-              ]
-            }
-          },
           "response": []
         },
         {
-          "name": "Search Combined Query & Genre",
+          "name": "No search results",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/manga?q=__postman_no_matching_title_72819__",
+            "description": ""
+          },
           "event": [
             {
               "listen": "test",
               "script": {
+                "type": "text/javascript",
                 "exec": [
-                  "pm.test(\"Status code is 200 OK\", function () {",
-                  "    pm.response.to.have.status(200);",
-                  "});",
-                  "",
-                  "const jsonData = pm.response.json();",
-                  "pm.test(\"Returns filtered results\", function () {",
-                  "    pm.expect(jsonData.manga).to.be.an(\"array\").and.not.empty;",
-                  "});"
-                ],
-                "type": "text/javascript"
+                  "(() => {",
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"No matches\", () => {const d=pm.response.json(); pm.expect(d.count).to.eql(0); pm.expect(d.manga || []).to.eql([]);});",
+                  "})();"
+                ]
               }
             }
           ],
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/manga?q=Dragon&genre=Action",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "manga"
-              ],
-              "query": [
-                {
-                  "key": "q",
-                  "value": "Dragon"
-                },
-                {
-                  "key": "genre",
-                  "value": "Action"
-                }
-              ]
-            }
-          },
           "response": []
         },
         {
-          "name": "Get Manga Detail by ID (200 OK)",
+          "name": "Details through Gin to gRPC",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/manga/{{mangaId}}",
+            "description": ""
+          },
           "event": [
             {
               "listen": "test",
               "script": {
+                "type": "text/javascript",
                 "exec": [
-                  "pm.test(\"Status code is 200 OK\", function () {",
-                  "    pm.response.to.have.status(200);",
-                  "});",
-                  "",
-                  "const jsonData = pm.response.json();",
-                  "pm.test(\"Returns correct manga metadata\", function () {",
-                  "    pm.expect(jsonData.id).to.eql(pm.collectionVariables.get(\"mangaId\"));",
-                  "    pm.expect(jsonData.title).to.eql(\"One Piece\");",
-                  "    pm.expect(jsonData.total_chapters).to.be.a(\"number\");",
-                  "});"
-                ],
-                "type": "text/javascript"
+                  "(() => {",
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"All required detail fields\", () => { const d=pm.response.json(); [\"id\",\"title\",\"author\",\"genres\",\"status\",\"total_chapters\",\"description\"].forEach(k=>pm.expect(d).to.have.property(k)); pm.expect(d.id).to.eql(pm.variables.get(\"mangaId\")); });",
+                  "})();"
+                ]
               }
             }
           ],
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/manga/{{mangaId}}",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "manga",
-                "{{mangaId}}"
-              ]
-            }
-          },
           "response": []
         },
         {
-          "name": "Get Non-Existent Manga (404 Not Found)",
+          "name": "Unknown catalog ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/manga/__postman_missing_id__",
+            "description": ""
+          },
           "event": [
             {
               "listen": "test",
               "script": {
+                "type": "text/javascript",
                 "exec": [
-                  "pm.test(\"Status code is 404 Not Found\", function () {",
-                  "    pm.response.to.have.status(404);",
-                  "});",
-                  "",
-                  "const jsonData = pm.response.json();",
-                  "pm.test(\"Returns Manga not found error\", function () {",
-                  "    pm.expect(jsonData.error).to.include(\"not found\");",
-                  "});"
-                ],
-                "type": "text/javascript"
+                  "(() => {",
+                  "pm.test(\"HTTP 404\", () => pm.response.to.have.status(404));",
+                  "pm.test(\"Structured error\", () => pm.expect(pm.response.json().error).to.be.a(\"string\").and.not.empty);",
+                  "})();"
+                ]
               }
             }
           ],
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/manga/non-existent-manga-999",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "manga",
-                "non-existent-manga-999"
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Access Catalog Without Token (401 Unauthorized)",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "pm.test(\"Status code is 401 Unauthorized\", function () {",
-                  "    pm.response.to.have.status(401);",
-                  "});",
-                  "",
-                  "const jsonData = pm.response.json();",
-                  "pm.test(\"Rejects missing Authorization header\", function () {",
-                  "    pm.expect(jsonData.error).to.eql(\"Authorization header required\");",
-                  "});"
-                ],
-                "type": "text/javascript"
-              }
-            }
-          ],
-          "request": {
-            "auth": {
-              "type": "noauth"
-            },
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/manga",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "manga"
-              ]
-            }
-          },
           "response": []
         }
       ]
     },
     {
-      "name": "4. Reading Library & TCP Sync (HTTP -> TCP :9090)",
+      "name": "04 - F03 Library and progress",
+      "description": "These requests verify HTTP persistence. Observe a second TUI of the same account to prove visible TCP delivery; HTTP 200 alone is not delivery proof.",
       "item": [
         {
-          "name": "Add Manga to Library (200 OK)",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "pm.test(\"Status code is 200 OK\", function () {",
-                  "    pm.response.to.have.status(200);",
-                  "});",
-                  "",
-                  "const jsonData = pm.response.json();",
-                  "pm.test(\"Confirms addition to library\", function () {",
-                  "    pm.expect(jsonData.message).to.eql(\"Added to library\");",
-                  "});"
-                ],
-                "type": "text/javascript"
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"manga_id\": \"{{mangaId}}\",\n  \"status\": \"reading\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            },
-            "url": {
-              "raw": "{{baseUrl}}/api/library",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "library"
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Add Non-Existent Manga to Library (404 Not Found)",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "pm.test(\"Status code is 404 Not Found\", function () {",
-                  "    pm.response.to.have.status(404);",
-                  "});",
-                  "",
-                  "const jsonData = pm.response.json();",
-                  "pm.test(\"Rejects unknown manga ID via gRPC check\", function () {",
-                  "    pm.expect(jsonData.error).to.include(\"not found\");",
-                  "});"
-                ],
-                "type": "text/javascript"
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"manga_id\": \"non-existent-manga-999\",\n  \"status\": \"reading\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            },
-            "url": {
-              "raw": "{{baseUrl}}/api/library",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "library"
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Get Personal Library (200 OK)",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "pm.test(\"Status code is 200 OK\", function () {",
-                  "    pm.response.to.have.status(200);",
-                  "});",
-                  "",
-                  "const jsonData = pm.response.json();",
-                  "pm.test(\"Library contains added manga with gRPC-enriched title\", function () {",
-                  "    pm.expect(jsonData.library).to.be.an(\"array\").and.not.empty;",
-                  "    const ids = jsonData.library.map(item => item.manga_id);",
-                  "    pm.expect(ids).to.include(pm.collectionVariables.get(\"mangaId\"));",
-                  "});"
-                ],
-                "type": "text/javascript"
-              }
-            }
-          ],
+          "name": "New account has an empty library",
           "request": {
             "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/library",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "library"
-              ]
-            }
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/library",
+            "description": ""
           },
-          "response": []
-        },
-        {
-          "name": "Update Progress Valid (200 OK + TCP Broadcast)",
           "event": [
             {
               "listen": "test",
               "script": {
+                "type": "text/javascript",
                 "exec": [
-                  "pm.test(\"Status code is 200 OK\", function () {",
-                  "    pm.response.to.have.status(200);",
-                  "});",
-                  "",
-                  "const jsonData = pm.response.json();",
-                  "pm.test(\"Updates chapter and increments optimistic lock version\", function () {",
-                  "    pm.expect(jsonData.chapter).to.eql(15);",
-                  "    pm.expect(jsonData.manga_id).to.eql(pm.collectionVariables.get(\"mangaId\"));",
-                  "    pm.expect(jsonData.version).to.be.at.least(2);",
-                  "    pm.expect(jsonData.message).to.include(\"TCP event dispatched\");",
-                  "});"
-                ],
-                "type": "text/javascript"
+                  "(() => {",
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Empty personal library\", () => { const d=pm.response.json(); pm.expect(d.library).to.eql([]); pm.expect(d.count).to.eql(0); });",
+                  "})();"
+                ]
               }
             }
           ],
+          "response": []
+        },
+        {
+          "name": "Add as plan-to-read",
           "request": {
-            "method": "PUT",
+            "method": "POST",
             "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
               {
                 "key": "Content-Type",
                 "value": "application/json"
               }
             ],
+            "url": "{{baseUrl}}/api/library",
+            "description": "",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"current_chapter\": 15,\n  \"status\": \"reading\"\n}",
+              "raw": "{\n  \"manga_id\": \"{{mangaId}}\",\n  \"status\": \"plan_to_read\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
                 }
               }
-            },
-            "url": {
-              "raw": "{{baseUrl}}/api/library/{{mangaId}}/progress",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "library",
-                "{{mangaId}}",
-                "progress"
-              ]
-            },
-            "description": "Persists chapter 15 to SQLite, increments optimistic version, and pushes progress_updated event via TCP (:9090) only to same user's connected sessions."
+            }
           },
-          "response": []
-        },
-        {
-          "name": "Update Progress > Total Chapters (400 Bad Request)",
           "event": [
             {
               "listen": "test",
               "script": {
+                "type": "text/javascript",
                 "exec": [
-                  "pm.test(\"Status code is 400 Bad Request\", function () {",
-                  "    pm.response.to.have.status(400);",
-                  "});",
-                  "",
-                  "const jsonData = pm.response.json();",
-                  "pm.test(\"Rejects chapter exceeding catalog total_chapters\", function () {",
-                  "    pm.expect(jsonData.error).to.include(\"exceeds manga total chapters\");",
-                  "});"
-                ],
-                "type": "text/javascript"
+                  "(() => {",
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "})();"
+                ]
               }
             }
           ],
+          "response": []
+        },
+        {
+          "name": "Repeated add does not duplicate entry",
           "request": {
-            "method": "PUT",
+            "method": "POST",
             "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
               {
                 "key": "Content-Type",
                 "value": "application/json"
               }
             ],
+            "url": "{{baseUrl}}/api/library",
+            "description": "",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"current_chapter\": 99999,\n  \"status\": \"reading\"\n}",
+              "raw": "{\n  \"manga_id\": \"{{mangaId}}\",\n  \"status\": \"plan_to_read\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
                 }
               }
-            },
-            "url": {
-              "raw": "{{baseUrl}}/api/library/{{mangaId}}/progress",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "library",
-                "{{mangaId}}",
-                "progress"
-              ]
             }
           },
-          "response": []
-        },
-        {
-          "name": "Update Progress Not In Library (404 Not Found)",
           "event": [
             {
               "listen": "test",
               "script": {
+                "type": "text/javascript",
                 "exec": [
-                  "pm.test(\"Status code is 404 Not Found\", function () {",
-                  "    pm.response.to.have.status(404);",
-                  "});",
-                  "",
-                  "const jsonData = pm.response.json();",
-                  "pm.test(\"Reports manga is not in user library\", function () {",
-                  "    pm.expect(jsonData.error).to.include(\"not in user library\");",
-                  "});"
-                ],
-                "type": "text/javascript"
+                  "(() => {",
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "})();"
+                ]
               }
             }
           ],
+          "response": []
+        },
+        {
+          "name": "Verify persisted initial state",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/library",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "(() => {",
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "const save = (key, value) => { pm.collectionVariables.set(key, value); pm.environment.set(key, value); };",
+                  "",
+                  "            const d=pm.response.json();",
+                  "            pm.test(\"One plan-to-read entry at chapter zero\", () => {pm.expect(d.count).to.eql(1); pm.expect(d.library[0].current_chapter).to.eql(0); pm.expect(d.library[0].status).to.eql(\"plan_to_read\");});",
+                  "            save(\"lastVersion\",d.library[0].version); save(\"expectedChapter\",0);",
+                  "})();"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Set reading progress",
           "request": {
             "method": "PUT",
             "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
               {
                 "key": "Content-Type",
                 "value": "application/json"
               }
             ],
+            "url": "{{baseUrl}}/api/library/{{mangaId}}/progress",
+            "description": "",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"current_chapter\": 5,\n  \"status\": \"reading\"\n}",
+              "raw": "{\"current_chapter\":{{targetChapter}},\"status\":\"reading\"}",
               "options": {
                 "raw": {
                   "language": "json"
                 }
               }
-            },
-            "url": {
-              "raw": "{{baseUrl}}/api/library/{{unusedMangaId}}/progress",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "library",
-                "{{unusedMangaId}}",
-                "progress"
-              ]
             }
           },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "(() => {",
+                  "const save = (key, value) => { pm.collectionVariables.set(key, value); pm.environment.set(key, value); };",
+                  "save(\"targetChapter\", Math.min(3,Number(pm.variables.get(\"totalChapters\"))));",
+                  "})();"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "(() => {",
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "const save = (key, value) => { pm.collectionVariables.set(key, value); pm.environment.set(key, value); };",
+                  "",
+                  "const data = pm.response.json();",
+                  "pm.test(\"Exact next version and saved chapter\", () => {",
+                  "  pm.expect(data.manga_id).to.eql(pm.variables.get(\"mangaId\"));",
+                  "  pm.expect(data.version).to.eql(Number(pm.variables.get(\"lastVersion\")) + 1);",
+                  "  pm.expect(data.chapter).to.eql(Number(pm.variables.get(\"targetChapter\")));",
+                  "});",
+                  "if (pm.response.code === 200) { save(\"lastVersion\",data.version); save(\"expectedChapter\",data.chapter); }",
+                  "})();"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Chapter zero is valid",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/library/{{mangaId}}/progress",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"current_chapter\": 0,\n  \"status\": \"reading\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "(() => {",
+                  "const save = (key, value) => { pm.collectionVariables.set(key, value); pm.environment.set(key, value); };",
+                  "save(\"targetChapter\",0);",
+                  "})();"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "(() => {",
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "const save = (key, value) => { pm.collectionVariables.set(key, value); pm.environment.set(key, value); };",
+                  "",
+                  "const data = pm.response.json();",
+                  "pm.test(\"Exact next version and saved chapter\", () => {",
+                  "  pm.expect(data.manga_id).to.eql(pm.variables.get(\"mangaId\"));",
+                  "  pm.expect(data.version).to.eql(Number(pm.variables.get(\"lastVersion\")) + 1);",
+                  "  pm.expect(data.chapter).to.eql(Number(pm.variables.get(\"targetChapter\")));",
+                  "});",
+                  "if (pm.response.code === 200) { save(\"lastVersion\",data.version); save(\"expectedChapter\",data.chapter); }",
+                  "})();"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Mark completed at total chapters",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/library/{{mangaId}}/progress",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\"current_chapter\":{{targetChapter}},\"status\":\"completed\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "(() => {",
+                  "const save = (key, value) => { pm.collectionVariables.set(key, value); pm.environment.set(key, value); };",
+                  "save(\"targetChapter\",Number(pm.variables.get(\"totalChapters\")));",
+                  "})();"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "(() => {",
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "const save = (key, value) => { pm.collectionVariables.set(key, value); pm.environment.set(key, value); };",
+                  "",
+                  "const data = pm.response.json();",
+                  "pm.test(\"Exact next version and saved chapter\", () => {",
+                  "  pm.expect(data.manga_id).to.eql(pm.variables.get(\"mangaId\"));",
+                  "  pm.expect(data.version).to.eql(Number(pm.variables.get(\"lastVersion\")) + 1);",
+                  "  pm.expect(data.chapter).to.eql(Number(pm.variables.get(\"targetChapter\")));",
+                  "});",
+                  "if (pm.response.code === 200) { save(\"lastVersion\",data.version); save(\"expectedChapter\",data.chapter); }",
+                  "})();"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Verify stored chapter and version",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/library",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "(() => {",
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test(\"Only this account's library entry\", () => {",
+                  "  pm.expect(body.count).to.eql(1);",
+                  "  const item = body.library.find(x => x.manga_id === pm.variables.get(\"mangaId\"));",
+                  "  pm.expect(item).to.be.an(\"object\");",
+                  "  pm.expect(item.current_chapter).to.eql(Number(pm.variables.get(\"expectedChapter\")));",
+                  "  pm.expect(item.version).to.eql(Number(pm.variables.get(\"lastVersion\")));",
+                  "});",
+                  "})();"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Reject negative chapter",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/library/{{mangaId}}/progress",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"current_chapter\": -1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "(() => {",
+                  "pm.test(\"HTTP 400\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"Structured error\", () => pm.expect(pm.response.json().error).to.be.a(\"string\").and.not.empty);",
+                  "})();"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Reject chapter above total",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/library/{{mangaId}}/progress",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\"current_chapter\":{{overflowChapter}}}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "(() => {",
+                  "pm.test(\"HTTP 400\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"Structured error\", () => pm.expect(pm.response.json().error).to.be.a(\"string\").and.not.empty);",
+                  "})();"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Reject int32 overflow input",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/library/{{mangaId}}/progress",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"current_chapter\": 4294967296\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "(() => {",
+                  "pm.test(\"HTTP 400\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"Structured error\", () => pm.expect(pm.response.json().error).to.be.a(\"string\").and.not.empty);",
+                  "})();"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Reject unknown reading status",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/library/{{mangaId}}/progress",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"current_chapter\": 0,\n  \"status\": \"invented\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "(() => {",
+                  "pm.test(\"HTTP 400\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"Structured error\", () => pm.expect(pm.response.json().error).to.be.a(\"string\").and.not.empty);",
+                  "})();"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Existing manga not in this library",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/library/{{otherMangaId}}/progress",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"current_chapter\": 0\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "(() => {",
+                  "pm.test(\"HTTP 404\", () => pm.response.to.have.status(404));",
+                  "pm.test(\"Structured error\", () => pm.expect(pm.response.json().error).to.be.a(\"string\").and.not.empty);",
+                  "})();"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Rejected writes left data unchanged",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/library",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "(() => {",
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test(\"Only this account's library entry\", () => {",
+                  "  pm.expect(body.count).to.eql(1);",
+                  "  const item = body.library.find(x => x.manga_id === pm.variables.get(\"mangaId\"));",
+                  "  pm.expect(item).to.be.an(\"object\");",
+                  "  pm.expect(item.current_chapter).to.eql(Number(pm.variables.get(\"expectedChapter\")));",
+                  "  pm.expect(item.version).to.eql(Number(pm.variables.get(\"lastVersion\")));",
+                  "});",
+                  "})();"
+                ]
+              }
+            }
+          ],
           "response": []
         }
       ]
     },
     {
-      "name": "5. Admin Release & UDP Alert (HTTP -> gRPC -> UDP :9091)",
+      "name": "05 - F01 User isolation and admin guards",
+      "description": "",
       "item": [
         {
-          "name": "Release Chapter & Broadcast UDP (200 OK)",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "pm.test(\"Status code is 200 OK\", function () {",
-                  "    pm.response.to.have.status(200);",
-                  "});",
-                  "",
-                  "const jsonData = pm.response.json();",
-                  "pm.test(\"Updates gRPC catalog and triggers UDP alert\", function () {",
-                  "    pm.expect(jsonData.manga_id).to.eql(pm.collectionVariables.get(\"mangaId\"));",
-                  "    pm.expect(jsonData.total_chapters).to.eql(1105);",
-                  "    pm.expect(jsonData.message).to.include(\"UDP alert broadcasted\");",
-                  "});"
-                ],
-                "type": "text/javascript"
-              }
-            }
-          ],
+          "name": "Register a separate Bob account",
           "request": {
-            "auth": {
-              "type": "noauth"
-            },
             "method": "POST",
             "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
               {
                 "key": "Content-Type",
                 "value": "application/json"
               }
             ],
+            "url": "{{baseUrl}}/api/auth/register",
+            "description": "",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"chapter\": 1105,\n  \"title\": \"One Piece\"\n}",
+              "raw": "{\n  \"username\": \"{{bobUsername}}\",\n  \"email\": \"{{bobEmail}}\",\n  \"password\": \"{{bobPassword}}\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
                 }
               }
             },
-            "url": {
-              "raw": "{{baseUrl}}/api/admin/manga/{{mangaId}}/release",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "admin",
-                "manga",
-                "{{mangaId}}",
-                "release"
-              ]
-            },
-            "description": "Triggers a new chapter release. Backend calls gRPC UpdateChapters (:9092) and broadcasts a UDP datagram (:9091) to all subscribed TUI clients."
+            "auth": {
+              "type": "noauth"
+            }
           },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "(() => {",
+                  "const save = (key, value) => { pm.collectionVariables.set(key, value); pm.environment.set(key, value); };",
+                  "",
+                  "            const id=pm.variables.replaceIn(\"{{$guid}}\").replace(/-/g,\"\");",
+                  "            save(\"bobUsername\",\"bob_\"+id);save(\"bobEmail\",\"bob_\"+id+\"@example.test\");save(\"bobPassword\",\"Bob_demo_\"+id+\"!\");",
+                  "})();"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "(() => {",
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "const save = (key, value) => { pm.collectionVariables.set(key, value); pm.environment.set(key, value); };",
+                  "const d=pm.response.json(); if(pm.response.code===200){save(\"bobToken\",d.token);save(\"bobUserId\",d.user_id);} pm.test(\"Different account\",()=>pm.expect(d.user_id).not.to.eql(pm.variables.get(\"userId\")));",
+                  "})();"
+                ]
+              }
+            }
+          ],
           "response": []
         },
         {
-          "name": "Release Invalid Chapter <= 0 (400 Bad Request)",
+          "name": "Bob cannot read Alice's library",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/library?user_id={{userId}}",
+            "description": "",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{bobToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
           "event": [
             {
               "listen": "test",
               "script": {
+                "type": "text/javascript",
                 "exec": [
-                  "pm.test(\"Status code is 400 Bad Request\", function () {",
-                  "    pm.response.to.have.status(400);",
-                  "});",
-                  "",
-                  "const jsonData = pm.response.json();",
-                  "pm.test(\"Rejects non-positive chapter\", function () {",
-                  "    pm.expect(jsonData.error).to.include(\"integer > 0\");",
-                  "});"
-                ],
-                "type": "text/javascript"
+                  "(() => {",
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Empty personal library\", () => { const d=pm.response.json(); pm.expect(d.library).to.eql([]); pm.expect(d.count).to.eql(0); });",
+                  "})();"
+                ]
               }
             }
           ],
+          "response": []
+        },
+        {
+          "name": "Bob cannot edit Alice's library",
           "request": {
-            "auth": {
-              "type": "noauth"
-            },
-            "method": "POST",
+            "method": "PUT",
             "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
               {
                 "key": "Content-Type",
                 "value": "application/json"
               }
             ],
+            "url": "{{baseUrl}}/api/library/{{mangaId}}/progress",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"current_chapter\": 0,\n  \"user_id\": \"{{userId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{bobToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "(() => {",
+                  "pm.test(\"HTTP 404\", () => pm.response.to.have.status(404));",
+                  "pm.test(\"Structured error\", () => pm.expect(pm.response.json().error).to.be.a(\"string\").and.not.empty);",
+                  "})();"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Alice's stored state remains unchanged",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/library",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "(() => {",
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test(\"Only this account's library entry\", () => {",
+                  "  pm.expect(body.count).to.eql(1);",
+                  "  const item = body.library.find(x => x.manga_id === pm.variables.get(\"mangaId\"));",
+                  "  pm.expect(item).to.be.an(\"object\");",
+                  "  pm.expect(item.current_chapter).to.eql(Number(pm.variables.get(\"expectedChapter\")));",
+                  "  pm.expect(item.version).to.eql(Number(pm.variables.get(\"lastVersion\")));",
+                  "});",
+                  "})();"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Release requires JWT",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/admin/manga/{{mangaId}}/release",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"chapter\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "(() => {",
+                  "pm.test(\"HTTP 401\", () => pm.response.to.have.status(401));",
+                  "pm.test(\"Structured error\", () => pm.expect(pm.response.json().error).to.be.a(\"string\").and.not.empty);",
+                  "})();"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Release requires admin key",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/admin/manga/{{mangaId}}/release",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"chapter\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "(() => {",
+                  "pm.test(\"HTTP 403\", () => pm.response.to.have.status(403));",
+                  "pm.test(\"Structured error\", () => pm.expect(pm.response.json().error).to.be.a(\"string\").and.not.empty);",
+                  "})();"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Wrong admin key is rejected",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Admin-Key",
+                "value": "deliberately-wrong-key"
+              }
+            ],
+            "url": "{{baseUrl}}/api/admin/manga/{{mangaId}}/release",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"chapter\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "(() => {",
+                  "pm.test(\"HTTP 403\", () => pm.response.to.have.status(403));",
+                  "pm.test(\"Structured error\", () => pm.expect(pm.response.json().error).to.be.a(\"string\").and.not.empty);",
+                  "})();"
+                ]
+              }
+            }
+          ],
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "06 - F04 Admin demo (opt-in)",
+      "description": "Default skipped. Set runAdminDemo=true and adminKey to the backend ADMIN_API_KEY. Uses a real release; use a disposable demo database.",
+      "item": [
+        {
+          "name": "Read current authoritative chapter count",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/manga/{{mangaId}}",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "(() => {",
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "const save = (key, value) => { pm.collectionVariables.set(key, value); pm.environment.set(key, value); };",
+                  "save(\"newChapter\",Number(pm.response.json().total_chapters||0)+1);",
+                  "})();"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Publish one real chapter and broadcast UDP",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Admin-Key",
+                "value": "{{adminKey}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/admin/manga/{{mangaId}}/release",
+            "description": "Changes catalog data. Open subscribed TUI clients to observe the actual UDP notification.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\"chapter\":{{newChapter}}}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "(() => {",
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Catalog update acknowledged\",()=>pm.expect(pm.response.json().total_chapters).to.eql(Number(pm.variables.get(\"newChapter\"))));",
+                  "})();"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Verify changed catalog count",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/manga/{{mangaId}}",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "(() => {",
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "const save = (key, value) => { pm.collectionVariables.set(key, value); pm.environment.set(key, value); };",
+                  "pm.test(\"New total persisted\",()=>pm.expect(pm.response.json().total_chapters).to.eql(Number(pm.variables.get(\"newChapter\"))));save(\"totalChapters\",pm.response.json().total_chapters);",
+                  "})();"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Reject invalid release chapter",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Admin-Key",
+                "value": "{{adminKey}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/admin/manga/{{mangaId}}/release",
+            "description": "",
             "body": {
               "mode": "raw",
               "raw": "{\n  \"chapter\": 0\n}",
@@ -1107,252 +1822,777 @@
                   "language": "json"
                 }
               }
-            },
-            "url": {
-              "raw": "{{baseUrl}}/api/admin/manga/{{mangaId}}/release",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "admin",
-                "manga",
-                "{{mangaId}}",
-                "release"
-              ]
             }
           },
-          "response": []
-        },
-        {
-          "name": "Release Chapter Unknown Manga (404 Not Found)",
           "event": [
             {
               "listen": "test",
               "script": {
+                "type": "text/javascript",
                 "exec": [
-                  "pm.test(\"Status code is 404 Not Found\", function () {",
-                  "    pm.response.to.have.status(404);",
-                  "});"
-                ],
-                "type": "text/javascript"
+                  "(() => {",
+                  "pm.test(\"HTTP 400\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"Structured error\", () => pm.expect(pm.response.json().error).to.be.a(\"string\").and.not.empty);",
+                  "})();"
+                ]
               }
             }
           ],
+          "response": []
+        },
+        {
+          "name": "Reject overflowing release chapter",
           "request": {
-            "auth": {
-              "type": "noauth"
-            },
             "method": "POST",
             "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Admin-Key",
+                "value": "{{adminKey}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/admin/manga/{{mangaId}}/release",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"chapter\": 4294967296\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "(() => {",
+                  "pm.test(\"HTTP 400\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"Structured error\", () => pm.expect(pm.response.json().error).to.be.a(\"string\").and.not.empty);",
+                  "})();"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Unknown release manga",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Admin-Key",
+                "value": "{{adminKey}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/admin/manga/__postman_missing_id__/release",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"chapter\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "(() => {",
+                  "pm.test(\"HTTP 404\", () => pm.response.to.have.status(404));",
+                  "pm.test(\"Structured error\", () => pm.expect(pm.response.json().error).to.be.a(\"string\").and.not.empty);",
+                  "})();"
+                ]
+              }
+            }
+          ],
+          "response": []
+        }
+      ],
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "(() => {",
+              "if (String(pm.variables.get(\"runAdminDemo\")) !== \"true\") { pm.execution.skipRequest(); }",
+              "if (!pm.variables.get(\"adminKey\")) { throw new Error(\"Set adminKey before running the admin demo\"); }",
+              "})();"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "07 - Legacy route aliases",
+      "description": "",
+      "item": [
+        {
+          "name": "Legacy login",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
               {
                 "key": "Content-Type",
                 "value": "application/json"
               }
             ],
+            "url": "{{baseUrl}}/auth/login",
+            "description": "",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"chapter\": 10\n}",
+              "raw": "{\n  \"username\": \"{{testUsername}}\",\n  \"password\": \"{{password}}\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
                 }
               }
             },
-            "url": {
-              "raw": "{{baseUrl}}/api/admin/manga/non-existent-manga-999/release",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "admin",
-                "manga",
-                "non-existent-manga-999",
-                "release"
-              ]
+            "auth": {
+              "type": "noauth"
             }
           },
-          "response": []
-        }
-      ]
-    },
-    {
-      "name": "6. Legacy Web UI Aliases",
-      "item": [
-        {
-          "name": "Legacy Search by Title (/manga?title=One)",
           "event": [
             {
               "listen": "test",
               "script": {
+                "type": "text/javascript",
                 "exec": [
-                  "pm.test(\"Status code is 200 OK\", function () {",
-                  "    pm.response.to.have.status(200);",
-                  "});",
-                  "const jsonData = pm.response.json();",
-                  "pm.test(\"Supports ?title query param\", function () {",
-                  "    pm.expect(jsonData.manga).to.be.an(\"array\").and.not.empty;",
-                  "});"
-                ],
-                "type": "text/javascript"
-              }
-            }
-          ],
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/manga?title=One",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "manga"
-              ],
-              "query": [
-                {
-                  "key": "title",
-                  "value": "One"
-                }
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Legacy Get Library (/users/library)",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "pm.test(\"Status code is 200 OK\", function () {",
-                  "    pm.response.to.have.status(200);",
-                  "});"
-                ],
-                "type": "text/javascript"
-              }
-            }
-          ],
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/users/library",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "users",
-                "library"
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Legacy Update Progress (/users/progress)",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "pm.test(\"Status code is 200 OK\", function () {",
-                  "    pm.response.to.have.status(200);",
-                  "});",
+                  "(() => {",
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "const save = (key, value) => { pm.collectionVariables.set(key, value); pm.environment.set(key, value); };",
                   "",
-                  "const jsonData = pm.response.json();",
-                  "pm.test(\"Legacy PUT /users/progress updates chapter cleanly\", function () {",
-                  "    pm.expect(jsonData.chapter).to.eql(20);",
-                  "});"
-                ],
-                "type": "text/javascript"
+                  "const data = pm.response.json();",
+                  "pm.test(\"JWT and verified identity returned\", () => {",
+                  "  pm.expect(data.token).to.be.a(\"string\").and.not.empty;",
+                  "  pm.expect(data.user_id).to.be.a(\"string\").and.not.empty;",
+                  "  pm.expect(data.username).to.eql(pm.variables.get(\"testUsername\"));",
+                  "});",
+                  "if (pm.response.code === 200) { save(\"token\",data.token); save(\"userId\",data.user_id); save(\"username\",data.username); }",
+                  "})();"
+                ]
               }
             }
           ],
+          "response": []
+        },
+        {
+          "name": "Legacy catalog search",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/manga?q={{searchQuery}}",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "(() => {",
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Catalog response\", () => { const d=pm.response.json(); pm.expect(d.manga).to.be.an(\"array\"); pm.expect(d.count).to.eql(d.manga.length); });",
+                  "})();"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Legacy manga details",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/manga/{{mangaId}}",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "(() => {",
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "})();"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Legacy library",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/users/library",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "(() => {",
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test(\"Only this account's library entry\", () => {",
+                  "  pm.expect(body.count).to.eql(1);",
+                  "  const item = body.library.find(x => x.manga_id === pm.variables.get(\"mangaId\"));",
+                  "  pm.expect(item).to.be.an(\"object\");",
+                  "  pm.expect(item.current_chapter).to.eql(Number(pm.variables.get(\"expectedChapter\")));",
+                  "  pm.expect(item.version).to.eql(Number(pm.variables.get(\"lastVersion\")));",
+                  "});",
+                  "})();"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Legacy progress update",
           "request": {
             "method": "PUT",
             "header": [
               {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
                 "key": "Content-Type",
                 "value": "application/json"
               }
             ],
+            "url": "{{baseUrl}}/users/progress",
+            "description": "",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"manga_id\": \"{{mangaId}}\",\n  \"current_chapter\": 20,\n  \"status\": \"reading\"\n}",
+              "raw": "{\"manga_id\":\"{{mangaId}}\",\"current_chapter\":{{targetChapter}},\"status\":\"reading\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "(() => {",
+                  "const save = (key, value) => { pm.collectionVariables.set(key, value); pm.environment.set(key, value); };",
+                  "save(\"targetChapter\",Math.min(5,Number(pm.variables.get(\"totalChapters\"))));",
+                  "})();"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "(() => {",
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "const save = (key, value) => { pm.collectionVariables.set(key, value); pm.environment.set(key, value); };",
+                  "",
+                  "const data = pm.response.json();",
+                  "pm.test(\"Exact next version and saved chapter\", () => {",
+                  "  pm.expect(data.manga_id).to.eql(pm.variables.get(\"mangaId\"));",
+                  "  pm.expect(data.version).to.eql(Number(pm.variables.get(\"lastVersion\")) + 1);",
+                  "  pm.expect(data.chapter).to.eql(Number(pm.variables.get(\"targetChapter\")));",
+                  "});",
+                  "if (pm.response.code === 200) { save(\"lastVersion\",data.version); save(\"expectedChapter\",data.chapter); }",
+                  "})();"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Verify legacy update through current route",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/library",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "(() => {",
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test(\"Only this account's library entry\", () => {",
+                  "  pm.expect(body.count).to.eql(1);",
+                  "  const item = body.library.find(x => x.manga_id === pm.variables.get(\"mangaId\"));",
+                  "  pm.expect(item).to.be.an(\"object\");",
+                  "  pm.expect(item.current_chapter).to.eql(Number(pm.variables.get(\"expectedChapter\")));",
+                  "  pm.expect(item.version).to.eql(Number(pm.variables.get(\"lastVersion\")));",
+                  "});",
+                  "})();"
+                ]
+              }
+            }
+          ],
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "08 - F06 Catalog offline (opt-in)",
+      "description": "Run the normal workflow first, stop only catalog, set runFaultChecks=true, then select only this folder in Runner. Restart catalog afterward.",
+      "item": [
+        {
+          "name": "Backend alive but catalog unreachable",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/health",
+            "description": "",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "(() => {",
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Catalog is down\",()=>pm.expect(pm.response.json().services.grpc_catalog).to.eql(\"unreachable\"));",
+                  "})();"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Search fails with bounded 503",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/manga?q={{searchQuery}}",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "(() => {",
+                  "pm.test(\"HTTP 503\", () => pm.response.to.have.status(503));",
+                  "pm.test(\"Structured error\", () => pm.expect(pm.response.json().error).to.be.a(\"string\").and.not.empty);",
+                  "pm.test(\"Bounded response\",()=>pm.expect(pm.response.responseTime).to.be.below(5000));",
+                  "})();"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Details fail with 503",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/manga/{{mangaId}}",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "(() => {",
+                  "pm.test(\"HTTP 503\", () => pm.response.to.have.status(503));",
+                  "pm.test(\"Structured error\", () => pm.expect(pm.response.json().error).to.be.a(\"string\").and.not.empty);",
+                  "})();"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Add fails with 503",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/library",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"manga_id\": \"{{otherMangaId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "(() => {",
+                  "pm.test(\"HTTP 503\", () => pm.response.to.have.status(503));",
+                  "pm.test(\"Structured error\", () => pm.expect(pm.response.json().error).to.be.a(\"string\").and.not.empty);",
+                  "})();"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Progress fails with 503",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/library/{{mangaId}}/progress",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"current_chapter\": 0\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "(() => {",
+                  "pm.test(\"HTTP 503\", () => pm.response.to.have.status(503));",
+                  "pm.test(\"Structured error\", () => pm.expect(pm.response.json().error).to.be.a(\"string\").and.not.empty);",
+                  "})();"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Stored chapter and version did not change",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/library",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "(() => {",
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test(\"Only this account's library entry\", () => {",
+                  "  pm.expect(body.count).to.eql(1);",
+                  "  const item = body.library.find(x => x.manga_id === pm.variables.get(\"mangaId\"));",
+                  "  pm.expect(item).to.be.an(\"object\");",
+                  "  pm.expect(item.current_chapter).to.eql(Number(pm.variables.get(\"expectedChapter\")));",
+                  "  pm.expect(item.version).to.eql(Number(pm.variables.get(\"lastVersion\")));",
+                  "});",
+                  "})();"
+                ]
+              }
+            }
+          ],
+          "response": []
+        }
+      ],
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "(() => {",
+              "if (String(pm.variables.get(\"runFaultChecks\")) !== \"true\") { pm.execution.skipRequest(); }",
+              "})();"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "09 - Restart and recovery (opt-in)",
+      "description": "Restart backend/catalog with the same database paths and JWT_SECRET. Set runRecoveryChecks=true and run only this folder.",
+      "item": [
+        {
+          "name": "Catalog has recovered",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/health",
+            "description": "",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "(() => {",
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Catalog connected\",()=>pm.expect(pm.response.json().services.grpc_catalog).to.eql(\"connected\"));",
+                  "})();"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Existing account logs in after restart",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/auth/login",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"{{testUsername}}\",\n  \"password\": \"{{password}}\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
                 }
               }
             },
-            "url": {
-              "raw": "{{baseUrl}}/users/progress",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "users",
-                "progress"
-              ]
+            "auth": {
+              "type": "noauth"
             }
           },
-          "response": []
-        }
-      ]
-    },
-    {
-      "name": "7. Fault Injection (Manual gRPC Down -> 503)",
-      "item": [
-        {
-          "name": "Verify Bounded Failure (503 when Catalog Stopped)",
           "event": [
             {
               "listen": "test",
               "script": {
+                "type": "text/javascript",
                 "exec": [
-                  "pm.test(\"Responds within bounded timeout (< 2500ms)\", function () {",
-                  "    pm.expect(pm.response.responseTime).to.be.below(2500);",
-                  "});",
+                  "(() => {",
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "const save = (key, value) => { pm.collectionVariables.set(key, value); pm.environment.set(key, value); };",
                   "",
-                  "pm.test(\"Returns 200 (Catalog UP) or 503 (Catalog DOWN)\", function () {",
-                  "    pm.expect(pm.response.code).to.be.oneOf([200, 503]);",
+                  "const data = pm.response.json();",
+                  "pm.test(\"JWT and verified identity returned\", () => {",
+                  "  pm.expect(data.token).to.be.a(\"string\").and.not.empty;",
+                  "  pm.expect(data.user_id).to.be.a(\"string\").and.not.empty;",
+                  "  pm.expect(data.username).to.eql(pm.variables.get(\"testUsername\"));",
                   "});",
-                  "",
-                  "if (pm.response.code === 503) {",
-                  "    console.log(\"Fault Injection Verified: Backend returned HTTP 503 when gRPC Catalog (:9092) was stopped!\");",
-                  "} else {",
-                  "    console.log(\"Catalog service is currently RUNNING (200 OK). To test 503 fallback, stop cmd/catalog and click Send again.\");",
-                  "}"
-                ],
-                "type": "text/javascript"
+                  "if (pm.response.code === 200) { save(\"token\",data.token); save(\"userId\",data.user_id); save(\"username\",data.username); }",
+                  "})();"
+                ]
               }
             }
           ],
+          "response": []
+        },
+        {
+          "name": "Library survives backend restart",
           "request": {
             "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/manga?q=One",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "manga"
-              ],
-              "query": [
-                {
-                  "key": "q",
-                  "value": "One"
-                }
-              ]
-            },
-            "description": "Manual Fault Injection Demo:\n1. Stop the gRPC Catalog process (:9092).\n2. Send this request.\n3. Verify that Backend does NOT hang and instead fails bounded within 2s returning HTTP 503 Service Unavailable."
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/library",
+            "description": ""
           },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "(() => {",
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test(\"Only this account's library entry\", () => {",
+                  "  pm.expect(body.count).to.eql(1);",
+                  "  const item = body.library.find(x => x.manga_id === pm.variables.get(\"mangaId\"));",
+                  "  pm.expect(item).to.be.an(\"object\");",
+                  "  pm.expect(item.current_chapter).to.eql(Number(pm.variables.get(\"expectedChapter\")));",
+                  "  pm.expect(item.version).to.eql(Number(pm.variables.get(\"lastVersion\")));",
+                  "});",
+                  "})();"
+                ]
+              }
+            }
+          ],
           "response": []
+        },
+        {
+          "name": "Details available again",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/manga/{{mangaId}}",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "(() => {",
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "})();"
+                ]
+              }
+            }
+          ],
+          "response": []
+        }
+      ],
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "(() => {",
+              "if (String(pm.variables.get(\"runRecoveryChecks\")) !== \"true\") { pm.execution.skipRequest(); }",
+              "})();"
+            ]
+          }
         }
       ]
     }

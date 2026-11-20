@@ -44,6 +44,11 @@ func (c *APIClient) doRequest(method, endpoint string, body interface{}, dest in
 	}
 
 	req.Header.Set("Content-Type", "application/json")
+	if method == http.MethodPut && strings.HasPrefix(endpoint, "/api/library/") && strings.HasSuffix(endpoint, "/progress") {
+		if sessionID := c.state.tcpSessionID(); sessionID != "" {
+			req.Header.Set("X-Session-ID", sessionID)
+		}
+	}
 	if strings.HasPrefix(endpoint, "/api/admin/") {
 		req.Header.Set("X-Admin-Key", os.Getenv("ADMIN_API_KEY"))
 	}

@@ -23,15 +23,17 @@ type AppState struct {
 	Pages *tview.Pages
 
 	// Server URLs
-	BaseURL  string
-	TCPAddr  string
-	UDPAddr  string
-	WSURL    string
+	BaseURL string
+	TCPAddr string
+	UDPAddr string
+	WSURL   string
 
 	// Auth Info
 	Token    string
 	UserID   string
 	Username string
+	// Issued by TCP authentication; deliberately not persisted in the login session file.
+	TCPSessionID string
 
 	// Live Data
 	MangaCatalog     []*models.Manga
@@ -133,4 +135,3 @@ func (s *AppState) AddNotification(notif string) {
 		s.SetStatus(fmt.Sprintf("[yellow]🔔 %s[white]", notif))
 	}()
 }
-

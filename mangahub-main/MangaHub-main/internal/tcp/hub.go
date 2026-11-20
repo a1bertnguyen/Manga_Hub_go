@@ -11,14 +11,17 @@ import (
 )
 
 type Client struct {
-	Conn   net.Conn
-	UserID string
-	Send   chan []byte
+	Conn       net.Conn
+	UserID     string
+	SessionID  string
+	Send       chan []byte
+	Registered chan struct{}
 }
 
 type UserBroadcast struct {
-	UserID  string
-	Message []byte
+	UserID          string
+	SourceSessionID string
+	Message         []byte
 }
 
 type Hub struct {
@@ -49,6 +52,9 @@ func (h *Hub) Run() {
 			h.clients[client] = true
 			count := len(h.clients)
 			h.mu.Unlock()
+			if client.Registered != nil {
+				close(client.Registered)
+			}
 			log.Printf("[TCP Hub] Client registered: UserID=%s from %s (Total clients: %d)",
 				client.UserID, client.Conn.RemoteAddr().String(), count)
 
@@ -66,7 +72,7 @@ func (h *Hub) Run() {
 			h.mu.Lock()
 			for client := range h.clients {
 				// User Isolation: only send to clients that belong to the SAME UserID
-				if client.UserID == ub.UserID {
+				if client.UserID == ub.UserID && (ub.SourceSessionID == "" || client.SessionID != ub.SourceSessionID) {
 					select {
 					case client.Send <- ub.Message:
 					default:
@@ -81,9 +87,10 @@ func (h *Hub) Run() {
 	}
 }
 
-// BroadcastProgress sends a reading progress update ONLY to connected TCP clients of the same user.
+// BroadcastProgress sends progress only to the same user's other TCP sessions.
+// An HTTP-only caller has no TCP source session, so all of its user's sessions receive it.
 // Framing: One JSON object per newline as required by the specification.
-func (h *Hub) BroadcastProgress(update models.UserProgress, username, mangaTitle string) {
+func (h *Hub) BroadcastProgress(update models.UserProgress, username, mangaTitle, sourceSessionID string) {
 	msg := map[string]interface{}{
 		"type":        "progress_updated",
 		"user_id":     update.UserID,
@@ -103,9 +110,22 @@ func (h *Hub) BroadcastProgress(update models.UserProgress, username, mangaTitle
 	}
 
 	h.broadcast <- UserBroadcast{
-		UserID:  update.UserID,
-		Message: data,
+		UserID:          update.UserID,
+		SourceSessionID: sourceSessionID,
+		Message:         data,
 	}
+}
+
+// OwnsSession validates a source against authenticated, currently registered clients.
+func (h *Hub) OwnsSession(userID, sessionID string) bool {
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+	for client := range h.clients {
+		if sessionID != "" && client.UserID == userID && client.SessionID == sessionID {
+			return true
+		}
+	}
+	return false
 }
 
 func (h *Hub) GetClientCount() int {

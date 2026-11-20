@@ -13,7 +13,7 @@ Prepare a 12-15 minute demonstration. Members ITITWE23049 and ITITIU22130 should
 | Step | Action | Expected observation |
 |---|---|---|
 | HTTP and gRPC | In A, search a title, select details, add it to the library | Metadata comes through Gin and the separate gRPC catalog |
-| TCP | In A's library, change a chapter; keep B on Library | B changes without pressing refresh; C does not gain A's private entry |
+| TCP | In A's library, change a chapter; keep B on Library | B changes without pressing refresh; C does not gain A's private entry. A uses the HTTP result; its own TCP session is excluded from the push |
 | Validation | Enter a chapter above the catalog total | HTTP 400 shown; stored chapter and version do not change |
 | UDP | Subscribe A and B; unsubscribe C. In the authorized teacher TUI press t | A/B display new-chapter alerts; C does not |
 | WebSocket | Join the same room in A/B and another room in C. Send a message | B receives it and C does not. Close B; A's chat remains functional |
@@ -24,6 +24,8 @@ Prepare a 12-15 minute demonstration. Members ITITWE23049 and ITITIU22130 should
 ## Evidence and ownership
 
 Run python scripts/verify_connected.py --with-tui from the repository root to reproduce the retained checks. For normal Go tests, race checks and vet, use the commands in README. Explain why the live test uses actual tview applications with simulation screens and how this differs from the human demonstration.
+
+Run `python scripts/verify_postman.py` for the exact collection plus the source-session regression. Its raw socket checks prove source A receives no TCP echo, peer B receives the committed version, user C receives nothing, and invalid/disconnected source identifiers cannot mutate state. TCP authentication supplies a fresh `session_id`, and the TUI passes it as `X-Session-ID` on HTTP progress updates.
 
 Be able to trace: JWT -> verified identity -> Hub membership; newline framing over a TCP byte stream; subscribe/unsubscribe source socket over UDP; server-enforced WebSocket room membership; gRPC deadline -> HTTP status -> no database mutation; SQLite UPDATE RETURNING -> exact committed version.
 

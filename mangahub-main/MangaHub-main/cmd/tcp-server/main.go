@@ -99,7 +99,7 @@ func receiveProgress(c *gin.Context) {
 		MangaID:        update.MangaID,
 		CurrentChapter: update.CurrentChapter,
 		Status:         update.Status,
-	}, update.Username, update.MangaTitle)
+	}, update.Username, update.MangaTitle, "")
 
 	// count number of clients
 	clientCount := tcp.GlobalHub.GetClientCount()

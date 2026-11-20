@@ -1,5 +1,5 @@
 ?   	mangahub/cmd/api-server	[no test files]
-ok  	mangahub/cmd/backend	60.963s
+ok  	mangahub/cmd/backend	66.359s
 ?   	mangahub/cmd/catalog	[no test files]
 ?   	mangahub/cmd/grpc-server	[no test files]
 ?   	mangahub/cmd/grpc-server/test	[no test files]
@@ -9,14 +9,14 @@ ok  	mangahub/cmd/backend	60.963s
 ?   	mangahub/cmd/udp-server/test	[no test files]
 ?   	mangahub/cmd/websocket-server	[no test files]
 ?   	mangahub/docs	[no test files]
-ok  	mangahub/internal/auth	38.022s
+ok  	mangahub/internal/auth	40.743s
 ?   	mangahub/internal/config	[no test files]
-ok  	mangahub/internal/database	2.350s
-ok  	mangahub/internal/grpc	2.765s
+ok  	mangahub/internal/database	2.415s
+ok  	mangahub/internal/grpc	2.785s
 ?   	mangahub/internal/shared	[no test files]
-ok  	mangahub/internal/tcp	1.949s
-ok  	mangahub/internal/tui	3.609s
-ok  	mangahub/internal/udp	1.754s
-ok  	mangahub/internal/websocket	2.273s
+ok  	mangahub/internal/tcp	2.182s
+ok  	mangahub/internal/tui	3.627s
+ok  	mangahub/internal/udp	1.783s
+ok  	mangahub/internal/websocket	2.341s
 ?   	mangahub/pkg/models	[no test files]
 ?   	mangahub/proto	[no test files]

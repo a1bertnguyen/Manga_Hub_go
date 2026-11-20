@@ -82,9 +82,14 @@ UDP is best effort. Chat, subscriber registries and alert feeds are in memory. P
 
 ## Evidence and guides
 
+- [F01-F06 acceptance review and source-session regression](mangahub-main/MangaHub-main/docs/FEATURE_ACCEPTANCE_REVIEW.md)
 - [Technical report](mangahub-main/MangaHub-main/REPORT.pdf)
 - [Grade A readiness review](mangahub-main/MangaHub-main/docs/GRADE_A_REVIEW.md)
 - [TUI guide](mangahub-main/MangaHub-main/docs/TUI_GUIDE.md)
 - [Live demo checklist](mangahub-main/MangaHub-main/docs/DEMO_CHECKLIST.md)
 - [Connected results](mangahub-main/MangaHub-main/docs/verification/connected-review-2026-11-20.json)
 - [Connected verifier](scripts/verify_connected.py)
+
+## Postman
+
+Import the [collection](mangahub-main/MangaHub-main/docs/MangaHub_API.postman_collection.json) and [local environment](mangahub-main/MangaHub-main/docs/MangaHub_Local.postman_environment.json). See the [Postman guide](mangahub-main/MangaHub-main/docs/POSTMAN_GUIDE.md) for the normal workflow, opt-in release/outage cases and live protocol checks.

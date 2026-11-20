@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"crypto/rand"
 	"encoding/json"
 	"log"
 	"net"
@@ -70,22 +71,27 @@ func handleTCPConnection(conn net.Conn) {
 	_ = conn.SetWriteDeadline(time.Time{})
 
 	client := &tcp.Client{
-		Conn:   conn,
-		UserID: userID,
-		Send:   make(chan []byte, 256),
+		Conn:       conn,
+		UserID:     userID,
+		SessionID:  rand.Text(),
+		Send:       make(chan []byte, 256),
+		Registered: make(chan struct{}),
 	}
 
 	// Send auth confirmation newline frame
 	authConfirm, _ := json.Marshal(map[string]interface{}{
-		"type":    "authenticated",
-		"user_id": userID,
-		"status":  "ok",
+		"type":       "authenticated",
+		"user_id":    userID,
+		"session_id": client.SessionID,
+		"status":     "ok",
 	})
 	client.Send <- authConfirm
 
 	log.Printf("[Backend TCP] Session authenticated: %s -> UserID: %s", remoteAddr, userID)
 
 	tcp.GlobalHub.Register <- client
+	// The auth acknowledgement must not reach the TUI before HTTP can validate its session.
+	<-client.Registered
 	go client.WritePump()
 	client.ReadPump()
 }

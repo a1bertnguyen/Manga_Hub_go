@@ -70,8 +70,8 @@ func (w *TCPWorker) Stop() {
 		_ = w.conn.Close()
 		w.conn = nil
 	}
-	w.mu.Unlock()
 	w.state.setConnection("tcp", false)
+	w.mu.Unlock()
 }
 
 func (w *TCPWorker) connectAndListen(stopChan chan struct{}) {
@@ -98,6 +98,7 @@ func (w *TCPWorker) connectAndListen(stopChan chan struct{}) {
 		w.mu.Lock()
 		if w.conn == conn {
 			w.conn = nil
+			w.state.setConnection("tcp", false)
 		}
 		w.mu.Unlock()
 	}()
@@ -125,6 +126,7 @@ func (w *TCPWorker) connectAndListen(stopChan chan struct{}) {
 		var event struct {
 			Type       string `json:"type"`
 			UserID     string `json:"user_id"`
+			SessionID  string `json:"session_id"`
 			MangaID    string `json:"manga_id"`
 			MangaTitle string `json:"manga_title"`
 			Chapter    int    `json:"chapter"`
@@ -136,7 +138,21 @@ func (w *TCPWorker) connectAndListen(stopChan chan struct{}) {
 			continue
 		}
 		if event.Type == "authenticated" && event.UserID == w.state.userID() {
-			w.state.setConnection("tcp", true)
+			if event.SessionID == "" {
+				break
+			}
+			w.mu.Lock()
+			select {
+			case <-stopChan:
+				w.mu.Unlock()
+				return
+			default:
+			}
+			w.state.mu.Lock()
+			w.state.TCPSessionID = event.SessionID
+			w.state.TCPConnected = true
+			w.state.mu.Unlock()
+			w.mu.Unlock()
 			w.state.SetStatus("[green]TCP session authenticated[white]")
 			continue
 		}
@@ -196,7 +212,6 @@ func (w *TCPWorker) connectAndListen(stopChan chan struct{}) {
 		}
 	}
 
-	w.state.setConnection("tcp", false)
 	w.state.SetStatus("[red]TCP sync connection lost[white]")
 	log.Printf("[TUI TCP] Disconnected from %s", w.state.TCPAddr)
 }

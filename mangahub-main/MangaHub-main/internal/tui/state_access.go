@@ -7,6 +7,9 @@ func (s *AppState) setConnection(protocol string, active bool) {
 	switch protocol {
 	case "tcp":
 		s.TCPConnected = active
+		if !active {
+			s.TCPSessionID = ""
+		}
 	case "udp":
 		s.UDPSubscribed = active
 	case "ws":
@@ -31,7 +34,14 @@ func (s *AppState) connected(protocol string) bool {
 func (s *AppState) setSession(token, id, username string) {
 	s.mu.Lock()
 	s.Token, s.UserID, s.Username = token, id, username
+	s.TCPSessionID, s.TCPConnected = "", false
 	s.mu.Unlock()
+}
+
+func (s *AppState) tcpSessionID() string {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return s.TCPSessionID
 }
 
 func (s *AppState) token() string    { s.mu.RLock(); defer s.mu.RUnlock(); return s.Token }

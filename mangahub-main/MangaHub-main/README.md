@@ -88,3 +88,9 @@ UDP is best effort. Chat, subscriber registries and alert feeds are in memory. P
 - [Live demo checklist](docs/DEMO_CHECKLIST.md)
 - [Connected results](docs/verification/connected-review-2026-11-20.json)
 - [Connected verifier](../../scripts/verify_connected.py)
+
+## Postman
+
+See the [F01-F06 acceptance review](docs/FEATURE_ACCEPTANCE_REVIEW.md) for measured results and the verified source-session exclusion in F03.
+
+Import the [collection](docs/MangaHub_API.postman_collection.json) and [local environment](docs/MangaHub_Local.postman_environment.json). See the [Postman guide](docs/POSTMAN_GUIDE.md) for the normal workflow, opt-in release/outage cases and live protocol checks.

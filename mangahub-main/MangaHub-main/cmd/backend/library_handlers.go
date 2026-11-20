@@ -149,6 +149,11 @@ func updateProgressLegacyHandler(c *gin.Context) {
 func executeProgressUpdate(c *gin.Context, mangaID string, currentChapter int, status string) {
 	userID := c.GetString("user_id")
 	username := c.GetString("username")
+	sourceSessionID := c.GetHeader("X-Session-ID")
+	if sourceSessionID != "" && !tcp.GlobalHub.OwnsSession(userID, sourceSessionID) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid or disconnected TCP session. Reconnect and try again."})
+		return
+	}
 
 	if currentChapter < 0 || !validReadingStatus(status) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid chapter or reading status"})
@@ -188,7 +193,7 @@ func executeProgressUpdate(c *gin.Context, mangaID string, currentChapter int, s
 		CurrentChapter: currentChapter,
 		Status:         status,
 		Version:        newVersion,
-	}, username, mangaTitle)
+	}, username, mangaTitle, sourceSessionID)
 
 	c.JSON(http.StatusOK, gin.H{
 		"message":  "Progress updated and TCP event dispatched",

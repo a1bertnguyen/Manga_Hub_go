@@ -1,0 +1,478 @@
+{
+  "tool": "Newman 6.2.3",
+  "postman_phases": [
+    {
+      "phase": "default-safe-run",
+      "passed": true,
+      "stats": {
+        "iterations": {
+          "total": 1,
+          "pending": 0,
+          "failed": 0
+        },
+        "items": {
+          "total": 57,
+          "pending": 0,
+          "failed": 0
+        },
+        "scripts": {
+          "total": 63,
+          "pending": 0,
+          "failed": 0
+        },
+        "prerequests": {
+          "total": 57,
+          "pending": 0,
+          "failed": 0
+        },
+        "requests": {
+          "total": 41,
+          "pending": 0,
+          "failed": 0
+        },
+        "tests": {
+          "total": 41,
+          "pending": 0,
+          "failed": 0
+        },
+        "assertions": {
+          "total": 82,
+          "pending": 0,
+          "failed": 0
+        },
+        "testScripts": {
+          "total": 41,
+          "pending": 0,
+          "failed": 0
+        },
+        "prerequestScripts": {
+          "total": 22,
+          "pending": 0,
+          "failed": 0
+        }
+      },
+      "failures": [],
+      "requests": [
+        {
+          "name": "Backend and catalog ready",
+          "status": 200
+        },
+        {
+          "name": "Register a fresh demo account",
+          "status": 200
+        },
+        {
+          "name": "Duplicate username is rejected",
+          "status": 409
+        },
+        {
+          "name": "Short password is rejected",
+          "status": 400
+        },
+        {
+          "name": "Successful login and save JWT",
+          "status": 200
+        },
+        {
+          "name": "Wrong password is rejected",
+          "status": 401
+        },
+        {
+          "name": "Protected library without token",
+          "status": 401
+        },
+        {
+          "name": "Protected catalog with invalid JWT",
+          "status": 401
+        },
+        {
+          "name": "List catalog and select real manga IDs",
+          "status": 200
+        },
+        {
+          "name": "Search by title",
+          "status": 200
+        },
+        {
+          "name": "Filter by genre",
+          "status": 200
+        },
+        {
+          "name": "No search results",
+          "status": 200
+        },
+        {
+          "name": "Details through Gin to gRPC",
+          "status": 200
+        },
+        {
+          "name": "Unknown catalog ID",
+          "status": 404
+        },
+        {
+          "name": "New account has an empty library",
+          "status": 200
+        },
+        {
+          "name": "Add as plan-to-read",
+          "status": 200
+        },
+        {
+          "name": "Repeated add does not duplicate entry",
+          "status": 200
+        },
+        {
+          "name": "Verify persisted initial state",
+          "status": 200
+        },
+        {
+          "name": "Set reading progress",
+          "status": 200
+        },
+        {
+          "name": "Chapter zero is valid",
+          "status": 200
+        },
+        {
+          "name": "Mark completed at total chapters",
+          "status": 200
+        },
+        {
+          "name": "Verify stored chapter and version",
+          "status": 200
+        },
+        {
+          "name": "Reject negative chapter",
+          "status": 400
+        },
+        {
+          "name": "Reject chapter above total",
+          "status": 400
+        },
+        {
+          "name": "Reject int32 overflow input",
+          "status": 400
+        },
+        {
+          "name": "Reject unknown reading status",
+          "status": 400
+        },
+        {
+          "name": "Existing manga not in this library",
+          "status": 404
+        },
+        {
+          "name": "Rejected writes left data unchanged",
+          "status": 200
+        },
+        {
+          "name": "Register a separate Bob account",
+          "status": 200
+        },
+        {
+          "name": "Bob cannot read Alice's library",
+          "status": 200
+        },
+        {
+          "name": "Bob cannot edit Alice's library",
+          "status": 404
+        },
+        {
+          "name": "Alice's stored state remains unchanged",
+          "status": 200
+        },
+        {
+          "name": "Release requires JWT",
+          "status": 401
+        },
+        {
+          "name": "Release requires admin key",
+          "status": 403
+        },
+        {
+          "name": "Wrong admin key is rejected",
+          "status": 403
+        },
+        {
+          "name": "Legacy login",
+          "status": 200
+        },
+        {
+          "name": "Legacy catalog search",
+          "status": 200
+        },
+        {
+          "name": "Legacy manga details",
+          "status": 200
+        },
+        {
+          "name": "Legacy library",
+          "status": 200
+        },
+        {
+          "name": "Legacy progress update",
+          "status": 200
+        },
+        {
+          "name": "Verify legacy update through current route",
+          "status": 200
+        }
+      ]
+    },
+    {
+      "phase": "admin-demo",
+      "passed": true,
+      "stats": {
+        "iterations": {
+          "total": 1,
+          "pending": 0,
+          "failed": 0
+        },
+        "items": {
+          "total": 6,
+          "pending": 0,
+          "failed": 0
+        },
+        "scripts": {
+          "total": 12,
+          "pending": 0,
+          "failed": 0
+        },
+        "prerequests": {
+          "total": 6,
+          "pending": 0,
+          "failed": 0
+        },
+        "requests": {
+          "total": 6,
+          "pending": 0,
+          "failed": 0
+        },
+        "tests": {
+          "total": 6,
+          "pending": 0,
+          "failed": 0
+        },
+        "assertions": {
+          "total": 11,
+          "pending": 0,
+          "failed": 0
+        },
+        "testScripts": {
+          "total": 6,
+          "pending": 0,
+          "failed": 0
+        },
+        "prerequestScripts": {
+          "total": 6,
+          "pending": 0,
+          "failed": 0
+        }
+      },
+      "failures": [],
+      "requests": [
+        {
+          "name": "Read current authoritative chapter count",
+          "status": 200
+        },
+        {
+          "name": "Publish one real chapter and broadcast UDP",
+          "status": 200
+        },
+        {
+          "name": "Verify changed catalog count",
+          "status": 200
+        },
+        {
+          "name": "Reject invalid release chapter",
+          "status": 400
+        },
+        {
+          "name": "Reject overflowing release chapter",
+          "status": 400
+        },
+        {
+          "name": "Unknown release manga",
+          "status": 404
+        }
+      ]
+    },
+    {
+      "phase": "catalog-offline",
+      "passed": true,
+      "stats": {
+        "iterations": {
+          "total": 1,
+          "pending": 0,
+          "failed": 0
+        },
+        "items": {
+          "total": 6,
+          "pending": 0,
+          "failed": 0
+        },
+        "scripts": {
+          "total": 12,
+          "pending": 0,
+          "failed": 0
+        },
+        "prerequests": {
+          "total": 6,
+          "pending": 0,
+          "failed": 0
+        },
+        "requests": {
+          "total": 6,
+          "pending": 0,
+          "failed": 0
+        },
+        "tests": {
+          "total": 6,
+          "pending": 0,
+          "failed": 0
+        },
+        "assertions": {
+          "total": 13,
+          "pending": 0,
+          "failed": 0
+        },
+        "testScripts": {
+          "total": 6,
+          "pending": 0,
+          "failed": 0
+        },
+        "prerequestScripts": {
+          "total": 6,
+          "pending": 0,
+          "failed": 0
+        }
+      },
+      "failures": [],
+      "requests": [
+        {
+          "name": "Backend alive but catalog unreachable",
+          "status": 200
+        },
+        {
+          "name": "Search fails with bounded 503",
+          "status": 503
+        },
+        {
+          "name": "Details fail with 503",
+          "status": 503
+        },
+        {
+          "name": "Add fails with 503",
+          "status": 503
+        },
+        {
+          "name": "Progress fails with 503",
+          "status": 503
+        },
+        {
+          "name": "Stored chapter and version did not change",
+          "status": 200
+        }
+      ]
+    },
+    {
+      "phase": "restart-recovery",
+      "passed": true,
+      "stats": {
+        "iterations": {
+          "total": 1,
+          "pending": 0,
+          "failed": 0
+        },
+        "items": {
+          "total": 4,
+          "pending": 0,
+          "failed": 0
+        },
+        "scripts": {
+          "total": 8,
+          "pending": 0,
+          "failed": 0
+        },
+        "prerequests": {
+          "total": 4,
+          "pending": 0,
+          "failed": 0
+        },
+        "requests": {
+          "total": 4,
+          "pending": 0,
+          "failed": 0
+        },
+        "tests": {
+          "total": 4,
+          "pending": 0,
+          "failed": 0
+        },
+        "assertions": {
+          "total": 7,
+          "pending": 0,
+          "failed": 0
+        },
+        "testScripts": {
+          "total": 4,
+          "pending": 0,
+          "failed": 0
+        },
+        "prerequestScripts": {
+          "total": 4,
+          "pending": 0,
+          "failed": 0
+        }
+      },
+      "failures": [],
+      "requests": [
+        {
+          "name": "Catalog has recovered",
+          "status": 200
+        },
+        {
+          "name": "Existing account logs in after restart",
+          "status": 200
+        },
+        {
+          "name": "Library survives backend restart",
+          "status": 200
+        },
+        {
+          "name": "Details available again",
+          "status": 200
+        }
+      ]
+    }
+  ],
+  "acceptance_checks": [
+    {
+      "name": "TestLiveFeatureAcceptanceTUI",
+      "passed": true,
+      "observed": "=== RUN   TestLiveFeatureAcceptanceTUI\n2026/11/20 17:00:41 [TUI TCP] Disconnected from 127.0.0.1:50785\n    feature_acceptance_test.go:112: F01 PASS: actual Register/Login/Logout buttons and wrong-password feedback through the running TUI\n    feature_acceptance_test.go:147: F02 PASS: title search, selected metadata (all six fields), and visible no-result state over real HTTP -> gRPC\n    feature_acceptance_test.go:229: F03 PASS: add dialog, all three statuses, progress edit, peer redraw without refresh, different-account isolation, invalid chapter error and unchanged stored version\n    feature_acceptance_test.go:259: F04 PASS: user-triggered release and unsubscribe keys; notifications rendered in two TUIs, unsubscribed peer receives no second alert\n    feature_acceptance_test.go:309: F05 PASS: actual room selection and send input, bidirectional rendered chat, room isolation, peer disconnect and responsive navigation\n2026/11/20 17:00:49 [TUI TCP] Disconnected from 127.0.0.1:50785\n2026/11/20 17:00:49 [TUI TCP] Disconnected from 127.0.0.1:50785\n2026/11/20 17:00:49 [TUI TCP] Disconnected from 127.0.0.1:50785\n--- PASS: TestLiveFeatureAcceptanceTUI (9.38s)\nPASS\nok  \tmangahub/internal/tui\t10.905s\n"
+    },
+    {
+      "name": "Unavailable UDP receiver",
+      "passed": true,
+      "observed": "Subscriber socket closed without unsubscribe; surviving subscriber received new_chapter; backend health responded 200"
+    },
+    {
+      "name": "TestLiveCatalogUnavailableTUI",
+      "passed": true,
+      "observed": "=== RUN   TestLiveCatalogUnavailableTUI\n    feature_acceptance_test.go:326: F02/F06 PASS: stopped real catalog -> visible HTTP 503 in TUI, keyboard navigation stays responsive\n--- PASS: TestLiveCatalogUnavailableTUI (0.16s)\nPASS\nok  \tmangahub/internal/tui\t1.779s\n"
+    },
+    {
+      "name": "SQLite password hash survives restart",
+      "passed": true,
+      "observed": "Persisted bcrypt hash differs from plaintext; actual account login and library state verified after backend restart"
+    },
+    {
+      "name": "F03 source-session exclusion",
+      "passed": true,
+      "observed": "Real modern/legacy HTTP updates: same-user peer received matching committed version; source and different user received no TCP event. Unknown/cross-user/disconnected session IDs and invalid chapters rejected without writes/events. HTTP-only delivery and fresh-session reconnect verified."
+    }
+  ],
+  "known_deviations": [],
+  "passed": true
+}
