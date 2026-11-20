@@ -1,7 +1,10 @@
 package config
 
 import (
+	"errors"
 	"os"
+
+	"github.com/joho/godotenv"
 )
 
 // Config holds all service configuration values
@@ -17,8 +20,13 @@ type Config struct {
 	AdminAPIKey     string
 }
 
-// Load returns configuration populated from environment variables with fallback defaults
+// Load reads .env.local from the working directory, preserving existing process
+// variables, then returns configuration with defaults for unset/empty values.
 func Load() *Config {
+	if err := godotenv.Load(".env.local"); err != nil && !errors.Is(err, os.ErrNotExist) {
+		// Parser errors may include file contents. Do not expose secrets in logs.
+		panic("cannot load .env.local: check its format and read permissions")
+	}
 	return &Config{
 		HTTPPort:        getEnv("HTTP_PORT", "8080"),
 		TCPPort:         getEnv("TCP_PORT", "9090"),

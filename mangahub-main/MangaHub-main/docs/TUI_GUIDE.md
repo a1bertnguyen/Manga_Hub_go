@@ -16,6 +16,8 @@ go run ./cmd/tui
 
 Open Account with F10 to register or log in. Catalog access requires authentication on the existing backend. An earlier saved session is restored automatically. If it has expired, log out and sign in again.
 
+Catalog, backend and TUI automatically load `.env.local` from the working directory. Keep the file in the Go module directory used above. Existing PowerShell environment variables take priority; open a fresh terminal if an old override should no longer apply. Restart programs after editing the file. The local file is ignored by Git.
+
 ## Navigation
 
 | Key | Action |

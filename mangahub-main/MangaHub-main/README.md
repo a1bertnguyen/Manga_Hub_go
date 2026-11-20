@@ -23,15 +23,12 @@ go run ./cmd/catalog
 Terminal 2:
 
 ```powershell
-$env:JWT_SECRET = "replace-with-your-private-signing-key"
-$env:ADMIN_API_KEY = "replace-with-your-private-demo-key"
 go run ./cmd/backend
 ```
 
-Terminal 3 (use the same ADMIN_API_KEY as the backend for a teacher/demo client):
+Terminal 3:
 
 ```powershell
-$env:ADMIN_API_KEY = "replace-with-your-private-demo-key"
 go run ./cmd/tui
 ```
 
@@ -54,7 +51,7 @@ F1 Catalog, F2 Library, F3 Discussion, F4 Alerts, F5 Connections, F10 Account. T
 | ADMIN_API_KEY | Private shared teacher/demo key; empty disables chapter release |
 | API_URL / TCP_ADDR / UDP_ADDR / WS_URL | Optional TUI endpoint overrides |
 
-.env.example is a reference. Environment variables must be exported in the shell; the programs do not load a .env file automatically. No Redis service is required. Use isolated demo databases for chapter release exercises.
+All three programs automatically load `.env.local` from the current working directory (the Go module directory above). Existing shell environment variables take priority, including an explicitly empty `ADMIN_API_KEY`. If no local file exists, shell values and defaults still work. To create a new local file, copy the module's `.env.example` to `.env.local` and set private JWT/admin keys; do not overwrite an existing local file. The same file supplies the backend and demo TUI key. Restart the affected programs after changing it. `.env.local` is ignored by Git. No Redis service is required. Use isolated demo databases for chapter release exercises.
 
 ## Verify
 

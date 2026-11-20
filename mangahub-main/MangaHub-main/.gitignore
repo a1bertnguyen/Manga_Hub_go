@@ -1,5 +1,6 @@
 .gitnexus/
 .claude/
+.scripts/
 AGENTS.md
 CLAUDE.md
 bin/

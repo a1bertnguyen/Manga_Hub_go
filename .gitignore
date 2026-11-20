@@ -6,6 +6,7 @@ bin/
 *.exe
 *.db
 .env
+.env.local
 .tui_session.json
 /tmp/
 __pycache__/
