@@ -41,7 +41,7 @@ func (w *TCPWorker) Start() {
 			case <-stopChan:
 				return
 			default:
-				if w.state.UserID == "" {
+				if w.state.userID() == "" {
 					time.Sleep(1 * time.Second)
 					continue
 				}
@@ -71,13 +71,13 @@ func (w *TCPWorker) Stop() {
 		w.conn = nil
 	}
 	w.mu.Unlock()
-	w.state.TCPConnected = false
+	w.state.setConnection("tcp", false)
 }
 
 func (w *TCPWorker) connectAndListen(stopChan chan struct{}) {
 	conn, err := net.DialTimeout("tcp", w.state.TCPAddr, 3*time.Second)
 	if err != nil {
-		w.state.TCPConnected = false
+		w.state.setConnection("tcp", false)
 		w.state.SetStatus("[red]TCP sync disconnected (retrying...)[white]")
 		return
 	}
@@ -105,18 +105,15 @@ func (w *TCPWorker) connectAndListen(stopChan chan struct{}) {
 	// 1. Send first-message authentication
 	authPayload := map[string]string{
 		"type":    "auth",
-		"token":   w.state.Token,
-		"user_id": w.state.UserID,
+		"token":   w.state.token(),
+		"user_id": w.state.userID(),
 	}
 	authBytes, _ := json.Marshal(authPayload)
 	_, err = conn.Write(append(authBytes, '\n'))
 	if err != nil {
-		w.state.TCPConnected = false
+		w.state.setConnection("tcp", false)
 		return
 	}
-
-	w.state.TCPConnected = true
-	w.state.SetStatus("[green]TCP sync connected (per-user isolated)[white]")
 
 	scanner := bufio.NewScanner(conn)
 	for scanner.Scan() {
@@ -138,8 +135,16 @@ func (w *TCPWorker) connectAndListen(stopChan chan struct{}) {
 		if err := json.Unmarshal(line, &event); err != nil {
 			continue
 		}
+		if event.Type == "authenticated" && event.UserID == w.state.userID() {
+			w.state.setConnection("tcp", true)
+			w.state.SetStatus("[green]TCP session authenticated[white]")
+			continue
+		}
+		if event.Type == "error" {
+			break
+		}
 
-		if event.Type == "progress_updated" {
+		if event.Type == "progress_updated" && event.UserID == w.state.userID() {
 			title := event.MangaTitle
 			if title == "" {
 				title = event.MangaID
@@ -150,6 +155,10 @@ func (w *TCPWorker) connectAndListen(stopChan chan struct{}) {
 			found := false
 			for idx := range w.state.UserLibrary {
 				if w.state.UserLibrary[idx].MangaID == event.MangaID {
+					if event.Version <= w.state.UserLibrary[idx].Version {
+						found = true
+						break
+					}
 					w.state.UserLibrary[idx].CurrentChapter = event.Chapter
 					w.state.UserLibrary[idx].Version = event.Version
 					if event.Status != "" {
@@ -187,7 +196,7 @@ func (w *TCPWorker) connectAndListen(stopChan chan struct{}) {
 		}
 	}
 
-	w.state.TCPConnected = false
+	w.state.setConnection("tcp", false)
 	w.state.SetStatus("[red]TCP sync connection lost[white]")
 	log.Printf("[TUI TCP] Disconnected from %s", w.state.TCPAddr)
 }

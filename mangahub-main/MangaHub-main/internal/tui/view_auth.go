@@ -4,13 +4,12 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
 )
 
 // buildAuthView returns either the user profile screen (if logged in) or the login/register form
 func (c *UIController) buildAuthView() tview.Primitive {
-	if c.state.Username != "" {
+	if c.state.username() != "" {
 		return c.buildProfileView()
 	}
 	return c.buildLoginForm()
@@ -19,26 +18,23 @@ func (c *UIController) buildAuthView() tview.Primitive {
 func (c *UIController) buildProfileView() tview.Primitive {
 	card := tview.NewFlex().SetDirection(tview.FlexRow)
 	card.SetBorder(true).
-		SetTitle(fmt.Sprintf(" 👤 User Profile: %s ", c.state.Username)).
-		SetTitleColor(tcell.ColorYellow)
+		SetTitle(" Your account ").
+		SetTitleColor(colorAccent)
 
-	tokenPreview := c.state.Token
-	if len(tokenPreview) > 32 {
-		tokenPreview = tokenPreview[:24] + "..." + tokenPreview[len(tokenPreview)-8:]
-	}
+	tokenPreview := "Saved on this device"
 
 	tcpStatus := "[red]Disconnected[white]"
-	if c.state.TCPConnected {
+	if c.state.connected("tcp") {
 		tcpStatus = "[green]Connected (:9090)[white]"
 	}
 
 	udpStatus := "[red]Unsubscribed[white]"
-	if c.state.UDPSubscribed {
+	if c.state.connected("udp") {
 		udpStatus = "[green]Subscribed (:9091)[white]"
 	}
 
 	wsStatus := "[red]Disconnected[white]"
-	if c.state.WSConnected {
+	if c.state.connected("ws") {
 		wsStatus = fmt.Sprintf("[green]Connected (#%s)[white]", c.state.ActiveRoom)
 	}
 
@@ -53,11 +49,12 @@ func (c *UIController) buildProfileView() tview.Primitive {
 				"  • [gray]TCP Progress Sync:[white] %s\n"+
 				"  • [gray]UDP Chapter Alerts:[white] %s\n"+
 				"  • [gray]WebSocket Chat:[white]    %s\n\n",
-			c.state.Username, c.state.UserID, tokenPreview,
+			c.state.username(), c.state.userID(), tokenPreview,
 			tcpStatus, udpStatus, wsStatus,
 		))
 
 	form := tview.NewForm()
+	styleForm(form)
 	form.AddButton("Logout", func() {
 		c.onLogout()
 	})
@@ -68,22 +65,24 @@ func (c *UIController) buildProfileView() tview.Primitive {
 		c.SwitchTab("browser")
 	})
 
+	c.focus["auth"] = []tview.Primitive{form}
 	card.AddItem(infoText, 0, 1, false).
 		AddItem(form, 3, 0, true)
 
-	return centerPrimitive(card, 64, 16)
+	return centerPrimitive(card, 70, 22)
 }
 
 func (c *UIController) buildLoginForm() tview.Primitive {
 	form := tview.NewForm()
+	styleForm(form)
 	form.SetBorder(true).
-		SetTitle(" 🔐 MangaHub Account Authentication ").
-		SetTitleColor(tcell.ColorYellow)
+		SetTitle(" WELCOME TO MANGAHUB ").
+		SetTitleColor(colorAccent)
 
 	var username, email, password string
 	form.AddInputField("Username", "", 24, nil, func(text string) { username = strings.TrimSpace(text) })
 	form.AddPasswordField("Password", "", 24, '*', func(text string) { password = text })
-	form.AddInputField("Email (Register only)", "", 24, nil, func(text string) { email = strings.TrimSpace(text) })
+	form.AddInputField("Email (new account)", "", 24, nil, func(text string) { email = strings.TrimSpace(text) })
 
 	statusText := tview.NewTextView().SetDynamicColors(true).SetTextAlign(tview.AlignCenter)
 
@@ -128,20 +127,22 @@ func (c *UIController) buildLoginForm() tview.Primitive {
 		}()
 	})
 
-	form.AddButton("Browse as Guest", func() {
+	form.AddButton("Catalog", func() {
 		c.SwitchTab("browser")
 	})
 
+	c.focus["auth"] = []tview.Primitive{form}
 	box := tview.NewFlex().
 		SetDirection(tview.FlexRow).
-		AddItem(form, 12, 0, true).
+		AddItem(hint("Track chapters. Discover stories. Read together."), 2, 0, false).
+		AddItem(form, 13, 0, true).
 		AddItem(statusText, 2, 0, false)
 
-	return centerPrimitive(box, 64, 16)
+	return centerPrimitive(box, 64, 19)
 }
 
 func (c *UIController) onLoginSuccess() {
-	c.state.SetStatus(fmt.Sprintf("[green]Welcome, %s! Starting background TCP/UDP sync services...[white]", c.state.Username))
+	c.state.SetStatus(fmt.Sprintf("[green]Welcome, %s! Starting background TCP/UDP sync services...[white]", c.state.username()))
 
 	// Rebuild auth page so it now displays the Profile View
 	c.state.Pages.AddPage("auth", c.buildAuthView(), true, false)
@@ -161,14 +162,20 @@ func (c *UIController) onLogout() {
 	c.udp.Stop()
 	c.chat.Close()
 
-	c.state.Token = ""
-	c.state.UserID = ""
-	c.state.Username = ""
+	c.state.setSession("", "", "")
+	c.state.mu.Lock()
 	c.state.UserLibrary = make([]LibraryItem, 0)
+	c.state.mu.Unlock()
+	c.catalogRequest++
+	c.detailRequest++
+	c.state.MangaCatalog = nil
+	populateLibraryTable(c.state.LibraryTable, nil, nil)
+	c.state.CatalogTable.Clear()
+	c.setupCatalogTableHeader()
+	c.state.ChatMessagesView.Clear()
 
 	// Rebuild auth page to display login form
 	c.state.Pages.AddPage("auth", c.buildAuthView(), true, true)
 	c.SwitchTab("auth")
 	c.state.SetStatus("[yellow]Logged out successfully. Browsing as Guest.[white]")
 }
-

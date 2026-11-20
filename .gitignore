@@ -7,4 +7,6 @@ bin/
 *.db
 .env
 .tui_session.json
+/tmp/
+__pycache__/
 

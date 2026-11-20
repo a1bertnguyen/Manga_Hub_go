@@ -102,7 +102,7 @@ func getMangaDetailHandler(c *gin.Context) {
 
 // AdminReleaseReq defines the request body for releasing a new chapter
 type AdminReleaseReq struct {
-	Chapter int    `json:"chapter" binding:"required,gt=0"`
+	Chapter int    `json:"chapter" binding:"required,gt=0,lte=2147483647"`
 	Title   string `json:"title"`
 }
 

@@ -3,10 +3,12 @@ package tui
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
+	"os"
+	"strings"
 	"time"
 
 	"mangahub/pkg/models"
@@ -42,8 +44,11 @@ func (c *APIClient) doRequest(method, endpoint string, body interface{}, dest in
 	}
 
 	req.Header.Set("Content-Type", "application/json")
-	if c.state.Token != "" {
-		req.Header.Set("Authorization", "Bearer "+c.state.Token)
+	if strings.HasPrefix(endpoint, "/api/admin/") {
+		req.Header.Set("X-Admin-Key", os.Getenv("ADMIN_API_KEY"))
+	}
+	if c.state.token() != "" {
+		req.Header.Set("Authorization", "Bearer "+c.state.token())
 	}
 
 	resp, err := c.http.Do(req)
@@ -62,7 +67,7 @@ func (c *APIClient) doRequest(method, endpoint string, body interface{}, dest in
 			Error string `json:"error"`
 		}
 		if err := json.Unmarshal(respBytes, &errResp); err == nil && errResp.Error != "" {
-			return errors.New(errResp.Error)
+			return fmt.Errorf("HTTP %d: %s", resp.StatusCode, errResp.Error)
 		}
 		return fmt.Errorf("HTTP error %d: %s", resp.StatusCode, string(respBytes))
 	}
@@ -83,9 +88,7 @@ func (c *APIClient) Login(username, password string) error {
 		return err
 	}
 
-	c.state.Token = res.Token
-	c.state.UserID = res.UserID
-	c.state.Username = res.Username
+	c.state.setSession(res.Token, res.UserID, res.Username)
 	_ = SaveSession(res.Token, res.UserID, res.Username)
 	return nil
 }
@@ -101,31 +104,24 @@ func (c *APIClient) Register(username, email, password string) error {
 		return err
 	}
 
-	c.state.Token = res.Token
-	c.state.UserID = res.UserID
-	c.state.Username = res.Username
+	c.state.setSession(res.Token, res.UserID, res.Username)
 	_ = SaveSession(res.Token, res.UserID, res.Username)
 	return nil
 }
 
 func (c *APIClient) FetchManga(query, genre string) ([]*models.Manga, error) {
-	url := "/api/manga"
-	if query != "" {
-		url += "?q=" + query
-	}
+	params := url.Values{}
+	params.Set("q", query)
 	if genre != "" {
-		if query != "" {
-			url += "&genre=" + genre
-		} else {
-			url += "?genre=" + genre
-		}
+		params.Set("genre", genre)
 	}
+	endpoint := "/api/manga?" + params.Encode()
 
 	var res struct {
 		Manga []*models.Manga `json:"manga"`
 		Count int             `json:"count"`
 	}
-	err := c.doRequest("GET", url, nil, &res)
+	err := c.doRequest("GET", endpoint, nil, &res)
 	if err != nil {
 		return nil, err
 	}

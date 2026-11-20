@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"crypto/subtle"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -63,8 +64,16 @@ func setupRouter(cfg *config.Config) *gin.Engine {
 	router.POST("/auth/login", loginHandler)
 
 	// Admin / Demo Release Endpoint (HTTP -> gRPC update -> UDP alert)
-	router.POST("/api/admin/manga/:id/release", adminReleaseChapterHandler)
-	router.POST("/admin/manga/:id/release", adminReleaseChapterHandler)
+	adminAccess := func(c *gin.Context) {
+		key := c.GetHeader("X-Admin-Key")
+		if cfg.AdminAPIKey == "" || subtle.ConstantTimeCompare([]byte(key), []byte(cfg.AdminAPIKey)) != 1 {
+			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": "A configured admin key is required"})
+			return
+		}
+		c.Next()
+	}
+	router.POST("/api/admin/manga/:id/release", auth.Middleware(), adminAccess, adminReleaseChapterHandler)
+	router.POST("/admin/manga/:id/release", auth.Middleware(), adminAccess, adminReleaseChapterHandler)
 
 	// Protected Endpoints
 	api := router.Group("/api")
@@ -89,7 +98,7 @@ func setupRouter(cfg *config.Config) *gin.Engine {
 	}
 
 	// WebSocket discussion upgrade endpoint
-	router.GET("/ws", handleWebSocketUpgrade)
+	router.GET("/ws", auth.Middleware(), handleWebSocketUpgrade)
 
 	// Static web assets if present
 	webDir := "web"
@@ -105,4 +114,3 @@ func setupRouter(cfg *config.Config) *gin.Engine {
 
 	return router
 }
-

@@ -2,6 +2,8 @@ package main
 
 import (
 	"context"
+	"database/sql"
+	"errors"
 	"fmt"
 	"net/http"
 	"time"
@@ -30,18 +32,12 @@ func addToLibraryHandler(c *gin.Context) {
 		return
 	}
 
-	// Verify manga exists via gRPC
-	if grpcCatalogClient != nil {
-		ctx, cancel := context.WithTimeout(c.Request.Context(), 2*time.Second)
-		defer cancel()
-		_, err := grpcCatalogClient.GetManga(ctx, &pb.GetMangaRequest{Id: req.MangaID})
-		if err != nil {
-			st, _ := status.FromError(err)
-			if st.Code() == codes.NotFound {
-				c.JSON(http.StatusNotFound, gin.H{"error": "Manga not found in catalog"})
-				return
-			}
-		}
+	if _, ok := requireCatalogManga(c, req.MangaID); !ok {
+		return
+	}
+	if !validReadingStatus(req.Status) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid reading status"})
+		return
 	}
 
 	status := req.Status
@@ -85,22 +81,34 @@ func getLibraryHandler(c *gin.Context) {
 		Version        int    `json:"version"`
 	}
 
-	var items []Item
+	items := make([]Item, 0)
 	for rows.Next() {
 		var i Item
-		rows.Scan(&i.MangaID, &i.CurrentChapter, &i.Status, &i.Version)
+		if err := rows.Scan(&i.MangaID, &i.CurrentChapter, &i.Status, &i.Version); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to read library"})
+			return
+		}
 		i.Title = i.MangaID
 		items = append(items, i)
 	}
+	if err := rows.Err(); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to read library"})
+		return
+	}
+	// Release the SQLite connection before enriching metadata through another service.
+	_ = rows.Close()
 
 	// Enrich titles via gRPC catalog if available
 	if grpcCatalogClient != nil {
+		ctx, cancel := context.WithTimeout(c.Request.Context(), 2*time.Second)
+		defer cancel()
 		for idx := range items {
-			ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+			if ctx.Err() != nil {
+				break
+			}
 			if mResp, err := grpcCatalogClient.GetManga(ctx, &pb.GetMangaRequest{Id: items[idx].MangaID}); err == nil && mResp.Manga != nil {
 				items[idx].Title = mResp.Manga.Title
 			}
-			cancel()
 		}
 	}
 
@@ -142,44 +150,36 @@ func executeProgressUpdate(c *gin.Context, mangaID string, currentChapter int, s
 	userID := c.GetString("user_id")
 	username := c.GetString("username")
 
-	// Validate max chapters via gRPC catalog (Grade A Requirement: 400 Bad Request if chapter > total)
-	mangaTitle := mangaID
-	if grpcCatalogClient != nil {
-		ctx, cancel := context.WithTimeout(c.Request.Context(), 2*time.Second)
-		defer cancel()
-		if mResp, err := grpcCatalogClient.GetManga(ctx, &pb.GetMangaRequest{Id: mangaID}); err == nil && mResp.Manga != nil {
-			mangaTitle = mResp.Manga.Title
-			if mResp.Manga.TotalChapters > 0 && int32(currentChapter) > mResp.Manga.TotalChapters {
-				c.JSON(http.StatusBadRequest, gin.H{
-					"error": fmt.Sprintf("Chapter %d exceeds manga total chapters (%d)", currentChapter, mResp.Manga.TotalChapters),
-				})
-				return
-			}
-		}
-	}
-
-	res, err := database.DB.Exec(`
-		UPDATE user_progress 
-		SET current_chapter = ?, 
-		    status = COALESCE(NULLIF(?, ''), status), 
-		    updated_at = CURRENT_TIMESTAMP, 
-		    version = version + 1
-		WHERE user_id = ? AND manga_id = ?
-	`, currentChapter, status, userID, mangaID)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update progress: " + err.Error()})
+	if currentChapter < 0 || !validReadingStatus(status) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid chapter or reading status"})
 		return
 	}
-
-	rowsAffected, _ := res.RowsAffected()
-	if rowsAffected == 0 {
+	manga, ok := requireCatalogManga(c, mangaID)
+	if !ok {
+		return
+	}
+	// Compare without narrowing to int32: very large input must not wrap around.
+	if int64(currentChapter) > int64(manga.TotalChapters) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Chapter %d exceeds manga total chapters (%d)", currentChapter, manga.TotalChapters)})
+		return
+	}
+	mangaTitle := manga.Title
+	var newVersion int
+	// RETURNING binds the returned version to this exact committed update.
+	err := database.DB.QueryRowContext(c.Request.Context(), `
+  UPDATE user_progress SET current_chapter = ?,
+  status = COALESCE(NULLIF(?, ''), status), updated_at = CURRENT_TIMESTAMP,
+  version = version + 1 WHERE user_id = ? AND manga_id = ?
+  RETURNING version, status
+ `, currentChapter, status, userID, mangaID).Scan(&newVersion, &status)
+	if errors.Is(err, sql.ErrNoRows) {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Manga not in user library. Please add it first."})
 		return
 	}
-
-	// Fetch updated version (Optimistic Concurrency Control)
-	var newVersion int
-	database.DB.QueryRow("SELECT version FROM user_progress WHERE user_id = ? AND manga_id = ?", userID, mangaID).Scan(&newVersion)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update progress"})
+		return
+	}
 
 	// Broadcast via TCP ONLY to same user's other sessions (Strict User Isolation)
 	tcp.GlobalHub.BroadcastProgress(models.UserProgress{
@@ -198,3 +198,40 @@ func executeProgressUpdate(c *gin.Context, mangaID string, currentChapter int, s
 	})
 }
 
+// requireCatalogManga is the shared boundary for all writes needing catalog validation.
+func requireCatalogManga(c *gin.Context, id string) (*pb.Manga, bool) {
+	if grpcCatalogClient == nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "Catalog service unavailable"})
+		return nil, false
+	}
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 2*time.Second)
+	defer cancel()
+	response, err := grpcCatalogClient.GetManga(ctx, &pb.GetMangaRequest{Id: id})
+	if err != nil {
+		code := http.StatusInternalServerError
+		switch status.Code(err) {
+		case codes.NotFound:
+			code = http.StatusNotFound
+		case codes.InvalidArgument:
+			code = http.StatusBadRequest
+		case codes.Unavailable, codes.DeadlineExceeded, codes.Canceled:
+			code = http.StatusServiceUnavailable
+		}
+		c.JSON(code, gin.H{"error": "Catalog validation failed: " + status.Convert(err).Message()})
+		return nil, false
+	}
+	if response == nil || response.Manga == nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "Catalog returned no manga"})
+		return nil, false
+	}
+	return response.Manga, true
+}
+
+func validReadingStatus(value string) bool {
+	switch value {
+	case "", "reading", "completed", "plan_to_read", "on-hold", "dropped":
+		return true
+	default:
+		return false
+	}
+}

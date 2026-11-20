@@ -9,7 +9,7 @@ import (
 func (c *Client) ReadPump() {
 	// Ensure client is unregistered and connection closed on exit
 	defer func() {
-		GlobalHub.Unregister <- c  // Remove client
+		GlobalHub.Unregister <- c // Remove client
 		c.Conn.Close()
 	}()
 
@@ -26,6 +26,7 @@ func (c *Client) ReadPump() {
 
 // sends messages to the TCP client
 func (c *Client) WritePump() {
+	defer c.Conn.Close()
 	// Create a ticker to send heartbeat every 30 seconds
 	ticker := time.NewTicker(30 * time.Second)
 	defer ticker.Stop()
@@ -35,13 +36,18 @@ func (c *Client) WritePump() {
 		// Send application messages to the client
 		case message, ok := <-c.Send:
 			if !ok {
-				c.Conn.Write([]byte("BYE\n"))
 				return
 			}
-			c.Conn.Write(append(message, '\n'))
+			_ = c.Conn.SetWriteDeadline(time.Now().Add(5 * time.Second))
+			if _, err := c.Conn.Write(append(message, '\n')); err != nil {
+				return
+			}
 		// Periodic heartbeat to client
 		case <-ticker.C:
-			c.Conn.Write([]byte("PING\n"))
+			_ = c.Conn.SetWriteDeadline(time.Now().Add(5 * time.Second))
+			if _, err := c.Conn.Write([]byte("PING\n")); err != nil {
+				return
+			}
 		}
 	}
 }

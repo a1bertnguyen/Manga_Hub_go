@@ -3,11 +3,14 @@ package tui
 import (
 	"encoding/json"
 	"fmt"
+	"net"
+	"net/http"
 	"net/url"
 	"sync"
 	"time"
 
 	"github.com/gorilla/websocket"
+	"github.com/rivo/tview"
 )
 
 type ChatClient struct {
@@ -31,37 +34,45 @@ func (c *ChatClient) Connect(room string) error {
 		c.conn = nil
 	}
 
-	c.state.ActiveRoom = room
-
 	u, err := url.Parse(c.state.WSURL)
 	if err != nil {
 		return err
 	}
 
 	q := u.Query()
-	q.Set("username", c.state.Username)
 	q.Set("room", room)
 	u.RawQuery = q.Encode()
 
-	conn, _, err := websocket.DefaultDialer.Dial(u.String(), nil)
+	dialer := *websocket.DefaultDialer
+	dialer.HandshakeTimeout = 3 * time.Second
+	dialer.NetDialContext = (&net.Dialer{Timeout: 3 * time.Second}).DialContext
+	headers := http.Header{}
+	headers.Set("Authorization", "Bearer "+c.state.token())
+	conn, _, err := dialer.Dial(u.String(), headers)
 	if err != nil {
-		c.state.WSConnected = false
+		c.state.setConnection("ws", false)
 		c.state.SetStatus(fmt.Sprintf("[red]WebSocket failed to connect to room #%s[white]", room))
 		return err
 	}
 
 	c.conn = conn
-	c.state.WSConnected = true
+	c.state.setConnection("ws", true)
 	c.state.SetStatus(fmt.Sprintf("[green]Connected to chat room #%s[white]", room))
 
 	// Clear previous chat view and display room header
 	if c.state.ChatMessagesView != nil {
-		c.state.App.QueueUpdateDraw(func() {
-			c.state.ChatMessagesView.SetText(fmt.Sprintf(
-				"[yellow]=== Entered Room: #%s ===[white]\n[gray]Type a message below and press Enter to send.[white]\n\n",
-				room,
-			))
-		})
+		// Do not wait for the event loop while holding c.mu: logout and shutdown
+		// call Close from that loop and need the same mutex.
+		go func() {
+			c.state.App.QueueUpdateDraw(func() {
+				c.mu.Lock()
+				current := c.conn == conn
+				c.mu.Unlock()
+				if current {
+					c.state.ChatMessagesView.SetTitle(" #" + tview.Escape(room) + " ")
+				}
+			})
+		}()
 	}
 
 	go c.readPump(conn, room)
@@ -73,7 +84,7 @@ func (c *ChatClient) readPump(conn *websocket.Conn, room string) {
 		c.mu.Lock()
 		if c.conn == conn {
 			c.conn = nil
-			c.state.WSConnected = false
+			c.state.setConnection("ws", false)
 		}
 		c.mu.Unlock()
 		_ = conn.Close()
@@ -107,7 +118,7 @@ func (c *ChatClient) readPump(conn *websocket.Conn, room string) {
 			formatted = fmt.Sprintf("[gray][%s] * %s *[white]\n", timestamp, chatMsg.Text)
 		} else {
 			authorColor := "cyan"
-			if chatMsg.Username == c.state.Username {
+			if chatMsg.Username == c.state.username() {
 				authorColor = "green"
 			}
 			formatted = fmt.Sprintf("[%s] [%s]%s:[white] %s\n", timestamp, authorColor, chatMsg.Username, chatMsg.Text)
@@ -132,7 +143,7 @@ func (c *ChatClient) SendMessage(text string) error {
 
 	msg := map[string]string{
 		"type":     "chat",
-		"username": c.state.Username,
+		"username": c.state.username(),
 		"text":     text,
 		"room":     c.state.ActiveRoom,
 	}
@@ -142,6 +153,9 @@ func (c *ChatClient) SendMessage(text string) error {
 		return err
 	}
 
+	if err := c.conn.SetWriteDeadline(time.Now().Add(3 * time.Second)); err != nil {
+		return err
+	}
 	return c.conn.WriteMessage(websocket.TextMessage, data)
 }
 
@@ -152,7 +166,6 @@ func (c *ChatClient) Close() {
 	if c.conn != nil {
 		_ = c.conn.Close()
 		c.conn = nil
-		c.state.WSConnected = false
+		c.state.setConnection("ws", false)
 	}
 }
-

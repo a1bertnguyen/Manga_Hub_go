@@ -9,13 +9,19 @@ import (
 )
 
 type UIController struct {
-	state      *AppState
-	api        *APIClient
-	tcp        *TCPWorker
-	udp        *UDPWorker
-	chat       *ChatClient
-	headerNav  *tview.TextView
-	currentTab string
+	state          *AppState
+	api            *APIClient
+	tcp            *TCPWorker
+	udp            *UDPWorker
+	chat           *ChatClient
+	headerNav      *tview.TextView
+	currentTab     string
+	footer         *tview.TextView
+	focus          map[string][]tview.Primitive
+	genre          string
+	search         string
+	catalogRequest uint64
+	detailRequest  uint64
 }
 
 func NewUIController(state *AppState, api *APIClient, tcp *TCPWorker, udp *UDPWorker, chat *ChatClient) *UIController {
@@ -33,9 +39,7 @@ func NewUIController(state *AppState, api *APIClient, tcp *TCPWorker, udp *UDPWo
 func (c *UIController) RestoreSession() {
 	sess, err := LoadSession()
 	if err == nil && sess != nil && sess.Token != "" {
-		c.state.Token = sess.Token
-		c.state.UserID = sess.UserID
-		c.state.Username = sess.Username
+		c.state.setSession(sess.Token, sess.UserID, sess.Username)
 
 		c.onLoginSuccess()
 		c.state.SetStatus(fmt.Sprintf("[green]Restored session for %s from .tui_session.json[white]", sess.Username))
@@ -46,16 +50,27 @@ func (c *UIController) RestoreSession() {
 }
 
 func (c *UIController) SetupLayout() tview.Primitive {
+	applyTheme()
+	c.focus = make(map[string][]tview.Primitive)
 	// 1. Top Header Navigation Bar
 	c.headerNav = tview.NewTextView().
 		SetDynamicColors(true).
-		SetTextAlign(tview.AlignCenter)
+		SetRegions(true)
+	c.headerNav.SetBackgroundColor(colorPanel)
+	c.headerNav.SetHighlightedFunc(func(added, removed, remaining []string) {
+		if len(added) > 0 {
+			c.SwitchTab(added[0])
+			c.headerNav.Highlight()
+		}
+	})
 	c.updateNavHeader()
 
 	// 2. Bottom Status Bar with live protocol indicators
 	c.state.StatusBar = tview.NewTextView().
 		SetDynamicColors(true).
-		SetText(" Ready. Browsing as Guest. Press [yellow]'0'[white] or [yellow]F10[white] to log in.")
+		SetText(" Ready. Open Account to sign in and start your reading journey.")
+	c.state.StatusBar.SetBackgroundColor(colorPanel)
+	c.footer = hint("F1-F5 / F10  Navigate   Tab  Next control   Alt+Left/Right  Switch page   Ctrl+C  Quit")
 
 	// 3. Central Tabbed Pages
 	if c.state.Pages == nil {
@@ -71,14 +86,41 @@ func (c *UIController) SetupLayout() tview.Primitive {
 	// 4. Root Flex Container
 	root := tview.NewFlex().
 		SetDirection(tview.FlexRow).
-		AddItem(c.headerNav, 1, 0, false).
+		AddItem(c.headerNav, 3, 0, false).
 		AddItem(c.state.Pages, 0, 1, true).
-		AddItem(c.state.StatusBar, 1, 0, false)
+		AddItem(c.state.StatusBar, 2, 0, false).
+		AddItem(c.footer, 1, 0, false)
 
 	// 5. Global Keyboard Shortcuts
 	c.state.App.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		if event.Key() == tcell.KeyCtrlC || (event.Modifiers()&tcell.ModAlt != 0 && (event.Rune() == 'q' || event.Rune() == 'Q')) {
+			c.state.App.Stop()
+			return nil
+		}
 		// Allow dialogs and modals to handle their own keys
 		if c.state.Pages.HasPage("dialog") || c.state.Pages.HasPage("update_dialog") {
+			return event
+		}
+		if event.Modifiers()&tcell.ModAlt != 0 {
+			if event.Key() == tcell.KeyRight {
+				c.cycleTab(1)
+				return nil
+			}
+			if event.Key() == tcell.KeyLeft {
+				c.cycleTab(-1)
+				return nil
+			}
+		}
+		if event.Key() == tcell.KeyTab || event.Key() == tcell.KeyBacktab {
+			// Forms own their internal focus order, including dropdowns and buttons.
+			if c.currentTab != "auth" {
+				delta := 1
+				if event.Key() == tcell.KeyBacktab {
+					delta = -1
+				}
+				c.focusControl(delta)
+				return nil
+			}
 			return event
 		}
 
@@ -104,15 +146,11 @@ func (c *UIController) SetupLayout() tview.Primitive {
 			return nil
 		}
 
-		// Exit on Alt+Q
-		if event.Modifiers()&tcell.ModAlt != 0 && (event.Rune() == 'q' || event.Rune() == 'Q') {
-			c.state.App.Stop()
-			return nil
-		}
-
 		// Number shortcuts (when not focused on an input field)
 		currentFocus := c.state.App.GetFocus()
-		if _, isInput := currentFocus.(*tview.InputField); !isInput {
+		_, isInput := currentFocus.(*tview.InputField)
+		_, isDropDown := currentFocus.(*tview.DropDown)
+		if !isInput && !isDropDown && c.currentTab != "auth" {
 			switch event.Rune() {
 			case '1':
 				c.SwitchTab("browser")
@@ -129,20 +167,11 @@ func (c *UIController) SetupLayout() tview.Primitive {
 			case '5':
 				c.SwitchTab("help")
 				return nil
-			case '0', 'l', 'L':
+			case '0':
 				c.SwitchTab("auth")
 				return nil
 			case '?':
 				c.SwitchTab("help")
-				return nil
-			}
-
-			// Tab / Backtab cycling
-			if event.Key() == tcell.KeyTab {
-				c.cycleTab(1)
-				return nil
-			} else if event.Key() == tcell.KeyBacktab {
-				c.cycleTab(-1)
 				return nil
 			}
 		}
@@ -169,29 +198,43 @@ var tabOrder = []struct {
 
 func (c *UIController) updateNavHeader() {
 	var parts []string
-	parts = append(parts, "[black:darkcyan:b] 📚 MANGAHUB TUI [-:-:-]")
 
 	for _, t := range tabOrder {
 		if t.ID == c.currentTab {
-			parts = append(parts, fmt.Sprintf("[black:yellow:b] [%s] %s [-:-:-]", t.Number, t.Name))
+			parts = append(parts, fmt.Sprintf("[\"%s\"][#0b1220:#5eead4:b] %s %s [-:-:-][\"\"]", t.ID, t.Number, t.Name))
 		} else {
-			parts = append(parts, fmt.Sprintf("[white:blue] [%s] %s [-:-:-]", t.Number, t.Name))
+			parts = append(parts, fmt.Sprintf("[\"%s\"][#8fa4bd] %s %s [-][\"\"]", t.ID, t.Number, t.Name))
 		}
 	}
 
-	userBadge := "[gray]Guest[white]"
-	if c.state.Username != "" {
-		userBadge = fmt.Sprintf("[cyan:b]👤 %s[-:-:-]", c.state.Username)
+	userBadge := "[#8fa4bd]Sign in to sync your library[-]"
+	if c.state.username() != "" {
+		userBadge = fmt.Sprintf("[#5eead4]%s[-]", tview.Escape(c.state.username()))
 	}
-	parts = append(parts, fmt.Sprintf(" %s", userBadge))
-
-	c.headerNav.SetText(" " + strings.Join(parts, "  "))
+	c.headerNav.SetText(" [#5eead4::b]M A N G A H U B[-:-:-]  [#8fa4bd]YOUR READING SPACE[-]   " + userBadge + "\n\n " + strings.Join(parts, " "))
 }
 
 func (c *UIController) SwitchTab(tab string) {
+	if !c.state.Pages.HasPage(tab) {
+		return
+	}
 	c.currentTab = tab
 	c.updateNavHeader()
 	c.state.Pages.SwitchToPage(tab)
+	if controls := c.focus[tab]; len(controls) > 0 {
+		c.state.App.SetFocus(controls[0])
+	}
+	hints := map[string]string{
+		"browser":       "/ Search   g Genre   Enter Add to library   r Refresh   Tab Details",
+		"library":       "Enter Edit progress   + Next chapter   - Previous chapter   r Refresh",
+		"discussion":    "Tab Rooms / Conversation / Message   Enter Join room or send message",
+		"notifications": "s Subscribe   u Unsubscribe   t Demo release   c Clear alerts",
+		"help":          "r Refresh diagnostics   Up/Down Scroll   F1-F5 / F10 Navigate",
+		"auth":          "Tab / Shift+Tab Move   Enter Submit   F1-F5 Navigate   Ctrl+C Quit",
+	}
+	if c.footer != nil {
+		c.footer.SetText(" " + hints[tab])
+	}
 
 	switch tab {
 	case "browser":
@@ -202,12 +245,16 @@ func (c *UIController) SwitchTab(tab string) {
 			c.state.App.SetFocus(c.state.CatalogTable)
 		}
 	case "library":
+		if c.state.username() == "" {
+			populateLibraryTable(c.state.LibraryTable, nil, nil)
+		}
 		c.refreshLibrary()
 		if c.state.LibraryTable != nil {
 			c.state.App.SetFocus(c.state.LibraryTable)
 		}
 	case "discussion":
-		if c.state.Username != "" && !c.state.WSConnected {
+		if c.state.username() != "" && !c.state.connected("ws") {
+			c.state.ChatMessagesView.SetText("[#8fa4bd]Joining #" + tview.Escape(c.state.ActiveRoom) + "...[-]\n\n")
 			go func() {
 				_ = c.chat.Connect(c.state.ActiveRoom)
 			}()
@@ -216,9 +263,13 @@ func (c *UIController) SwitchTab(tab string) {
 		c.renderNotificationsList()
 		c.state.SetStatus("[yellow]Viewing UDP chapter release announcements (port 9091)[white]")
 	case "help":
+		if controls := c.focus[tab]; len(controls) > 0 {
+			c.renderHelpContent(controls[0].(*tview.TextView))
+		}
 		c.state.SetStatus("[cyan]Viewing system architecture & protocol diagnostics[white]")
 	case "auth":
 		c.state.Pages.AddPage("auth", c.buildAuthView(), true, true)
+		c.state.App.SetFocus(c.focus["auth"][0])
 		c.state.SetStatus("[yellow]Viewing account & session settings[white]")
 	}
 }
@@ -238,11 +289,45 @@ func (c *UIController) cycleTab(delta int) {
 
 // centerPrimitive centers a component on screen within given width and height limits
 func centerPrimitive(p tview.Primitive, width, height int) tview.Primitive {
-	return tview.NewFlex().
-		AddItem(nil, 0, 1, false).
-		AddItem(tview.NewFlex().SetDirection(tview.FlexRow).
-			AddItem(nil, 0, 1, false).
-			AddItem(p, height, 1, true).
-			AddItem(nil, 0, 1, false), width, 1, true).
-		AddItem(nil, 0, 1, false)
+	return &centeredPrimitive{Box: tview.NewBox(), child: p, width: width, height: height}
+}
+
+func (c *UIController) focusControl(delta int) {
+	controls := c.focus[c.currentTab]
+	if len(controls) == 0 {
+		return
+	}
+	index := -1
+	for i, control := range controls {
+		if control.HasFocus() {
+			index = i
+			break
+		}
+	}
+	if index < 0 {
+		index = 0
+	} else {
+		index = (index + delta + len(controls)) % len(controls)
+	}
+	c.state.App.SetFocus(controls[index])
+}
+
+type centeredPrimitive struct {
+	*tview.Box
+	child         tview.Primitive
+	width, height int
+}
+
+func (p *centeredPrimitive) Draw(screen tcell.Screen) {
+	p.Box.Draw(screen)
+	x, y, width, height := p.GetInnerRect()
+	w, h := min(width, p.width), min(height, p.height)
+	p.child.SetRect(x+(width-w)/2, y+(height-h)/2, w, h)
+	p.child.Draw(screen)
+}
+
+func (p *centeredPrimitive) Focus(delegate func(tview.Primitive)) { delegate(p.child) }
+func (p *centeredPrimitive) HasFocus() bool                       { return p.child.HasFocus() }
+func (p *centeredPrimitive) MouseHandler() func(tview.MouseAction, *tcell.EventMouse, func(tview.Primitive)) (bool, tview.Primitive) {
+	return p.child.MouseHandler()
 }

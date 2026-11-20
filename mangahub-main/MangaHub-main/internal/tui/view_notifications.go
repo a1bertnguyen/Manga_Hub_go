@@ -14,15 +14,13 @@ func (c *UIController) buildNotificationsView() tview.Primitive {
 		SetDynamicColors(true).
 		SetWordWrap(true).
 		SetScrollable(true)
-	c.state.NotifView.SetBorder(true).
-		SetTitle(" 🔔 UDP Chapter Announcements (Port 9091 Best-Effort Datagrams) ").
-		SetTitleColor(tcell.ColorOrange)
+	stylePanel(c.state.NotifView.Box, "CHAPTER ALERTS")
 
 	c.renderNotificationsList()
 
 	controlBar := tview.NewTextView().
 		SetDynamicColors(true).
-		SetText(" [yellow:b]ACTIONS:[-:-:-] [green][t] Trigger Demo Release (gRPC -> UDP)[white]  │  [yellow][c] Clear Alerts[white]  │  [cyan][r] Re-subscribe UDP[white]")
+		SetText(" [#8fa4bd]s Subscribe   u Unsubscribe   t Demo release   c Clear[-]")
 
 	flex := tview.NewFlex().
 		SetDirection(tview.FlexRow).
@@ -30,22 +28,31 @@ func (c *UIController) buildNotificationsView() tview.Primitive {
 		AddItem(controlBar, 1, 0, false)
 
 	// Key handling for actions: 't' to trigger release, 'c' to clear, 'r' to re-subscribe
-	flex.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+	c.state.NotifView.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		switch event.Rune() {
 		case 't', 'T':
 			c.triggerDemoChapterRelease()
 			return nil
+		case 'u', 'U':
+			c.udp.Stop()
+			c.state.SetStatus("Chapter alerts unsubscribed. Press s to subscribe again.")
+			return nil
 		case 'c', 'C':
 			c.clearNotifications()
 			return nil
-		case 'r', 'R':
+		case 's', 'S', 'r', 'R':
+			if c.state.username() == "" {
+				c.state.SetStatus("Sign in with F10 to subscribe to chapter alerts.")
+				return nil
+			}
 			c.udp.Start()
-			c.state.SetStatus("[green]Re-subscribed to UDP chapter alerts on port 9091[white]")
+			c.state.SetStatus("Subscribing to chapter alerts...")
 			return nil
 		}
 		return event
 	})
 
+	c.focus["notifications"] = []tview.Primitive{c.state.NotifView}
 	return flex
 }
 
@@ -61,18 +68,13 @@ func (c *UIController) renderNotificationsList() {
 	c.state.mu.RUnlock()
 
 	var sb strings.Builder
-	sb.WriteString("\n [yellow:b]=== UDP CHAPTER RELEASE ANNOUNCEMENT FEED ===[-:-:-]\n")
-	sb.WriteString(" [gray]Backend dispatches UDP datagrams to port 9091 when new chapters are published.[white]\n")
-	sb.WriteString(fmt.Sprintf(" [gray]Total notifications received:[white] [yellow]%d[white]\n\n", count))
-
+	sb.WriteString("[#5eead4::b]The latest from your reading world[-:-:-]\n")
+	sb.WriteString(fmt.Sprintf("[#8fa4bd]%d recent alerts / best-effort delivery[-]\n\n", count))
 	if count == 0 {
-		sb.WriteString("  [gray]No notifications received yet.[white]\n\n")
-		sb.WriteString("  [yellow]💡 PRO-TIP:[white] Press [green]'t'[white] right now to trigger a demo chapter release!\n")
-		sb.WriteString("  The backend will call the gRPC Catalog Service, update total chapters, and\n")
-		sb.WriteString("  broadcast a UDP datagram to all clients. You will see the event appear here instantly!\n")
+		sb.WriteString("No new chapters yet.\n\nSign in and press s to subscribe.\nFor a connected demo, press t to publish a chapter.\n\n[#8fa4bd]Alerts arrive here automatically while you browse.[-]")
 	} else {
 		for _, n := range listCopy {
-			sb.WriteString(fmt.Sprintf("  [yellow]⚡[white] %s\n  [gray]────────────────────────────────────────────────────────────────────────[white]\n", n))
+			fmt.Fprintf(&sb, "[#5eead4]NEW CHAPTER[-]\n%s\n\n", tview.Escape(n))
 		}
 	}
 
@@ -113,4 +115,3 @@ func (c *UIController) triggerDemoChapterRelease() {
 		c.state.SetStatus("[green]Demo release sent! Waiting for UDP datagram on :9091...[white]")
 	}()
 }
-

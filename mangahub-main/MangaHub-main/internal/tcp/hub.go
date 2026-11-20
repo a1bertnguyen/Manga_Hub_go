@@ -63,7 +63,7 @@ func (h *Hub) Run() {
 			h.mu.Unlock()
 
 		case ub := <-h.broadcast:
-			h.mu.RLock()
+			h.mu.Lock()
 			for client := range h.clients {
 				// User Isolation: only send to clients that belong to the SAME UserID
 				if client.UserID == ub.UserID {
@@ -72,10 +72,11 @@ func (h *Hub) Run() {
 					default:
 						close(client.Send)
 						delete(h.clients, client)
+						_ = client.Conn.Close()
 					}
 				}
 			}
-			h.mu.RUnlock()
+			h.mu.Unlock()
 		}
 	}
 }

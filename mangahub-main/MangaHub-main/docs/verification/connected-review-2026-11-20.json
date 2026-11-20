@@ -1,0 +1,101 @@
+{
+  "checks": [
+    {
+      "check": "Independent processes",
+      "passed": true,
+      "observed": "Go catalog and Gin backend started with separate temporary SQLite files"
+    },
+    {
+      "check": "Admin requires login",
+      "passed": true,
+      "observed": "HTTP 401"
+    },
+    {
+      "check": "Admin requires configured key",
+      "passed": true,
+      "observed": "HTTP 403"
+    },
+    {
+      "check": "HTTP -> gRPC catalog",
+      "passed": true,
+      "observed": "HTTP 200; 54 seeded titles"
+    },
+    {
+      "check": "Unauthorized REST",
+      "passed": true,
+      "observed": "Unauthenticated library request: HTTP 401"
+    },
+    {
+      "check": "TCP push and user isolation",
+      "passed": true,
+      "observed": "Two same-user sockets received chapter 1; different-user socket received nothing"
+    },
+    {
+      "check": "TCP requires verified identity",
+      "passed": true,
+      "observed": "Tokenless user_id accepted: False"
+    },
+    {
+      "check": "TCP ignores forged user_id with valid JWT",
+      "passed": true,
+      "observed": "Identity derived from the JWT claims"
+    },
+    {
+      "check": "Expired JWT rejected across protocols",
+      "passed": true,
+      "observed": "Expired JWT rejected by REST, TCP and WebSocket"
+    },
+    {
+      "check": "Concurrent progress commits",
+      "passed": true,
+      "observed": "Eight concurrent HTTP updates; unique versions and final stored state checked"
+    },
+    {
+      "check": "UDP subscriptions and release",
+      "passed": true,
+      "observed": "Two subscribed sockets received a chapter alert; unsubscribed socket received nothing"
+    },
+    {
+      "check": "WebSocket rejects missing JWT",
+      "passed": true,
+      "observed": "Upgrade without JWT: HTTP 401"
+    },
+    {
+      "check": "WebSocket room delivery",
+      "passed": true,
+      "observed": "Same-room client received chat; other room received nothing"
+    },
+    {
+      "check": "Live TUI integration under race detector",
+      "passed": true,
+      "observed": "=== RUN   TestLiveConnectedTUI\n    live_integration_test.go:94: PASS: live TCP update rendered in second TUI without refresh; other account isolated\n    live_integration_test.go:122: PASS: two TUIs rendered UDP alerts; unsubscribed TUI stopped receiving them\n    live_integration_test.go:155: PASS: authenticated chat rendered; rooms isolated; disconnect and keyboard navigation remained functional\n2026/11/20 16:16:43 [TUI TCP] Disconnected from 127.0.0.1:57244\n2026/11/20 16:16:43 [TUI TCP] Disconnected from 127.0.0.1:57244\n2026/11/20 16:16:43 [TUI TCP] Disconnected from 127.0.0.1:57244\n--- PASS: TestLiveConnectedTUI (1.48s)\nPASS\nok  \tmangahub/internal/tui\t3.188s\n"
+    },
+    {
+      "check": "Chapter overflow rejected",
+      "passed": true,
+      "observed": "Above-total update: HTTP 400"
+    },
+    {
+      "check": "Bounded catalog failure",
+      "passed": true,
+      "observed": "HTTP 503 after 0.022s"
+    },
+    {
+      "check": "Progress validation during catalog failure",
+      "passed": true,
+      "observed": "Catalog stopped; above-total update returned HTTP 503"
+    },
+    {
+      "check": "Library addition during catalog failure",
+      "passed": true,
+      "observed": "Catalog stopped; add returned HTTP 503"
+    },
+    {
+      "check": "Backend restart persistence",
+      "passed": true,
+      "observed": "Restarted real backend; stored chapter = 1"
+    }
+  ],
+  "passed": 19,
+  "failed": 0
+}

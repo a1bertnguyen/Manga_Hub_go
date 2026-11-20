@@ -6,6 +6,7 @@ import (
 	"log"
 	"net"
 	"strings"
+	"time"
 
 	"mangahub/internal/auth"
 	"mangahub/internal/tcp"
@@ -40,6 +41,9 @@ func handleTCPConnection(conn net.Conn) {
 	log.Printf("[Backend TCP] Client connected: %s", remoteAddr)
 
 	scanner := bufio.NewScanner(conn)
+	scanner.Buffer(make([]byte, 1024), 16*1024)
+	_ = conn.SetReadDeadline(time.Now().Add(5 * time.Second))
+	_ = conn.SetWriteDeadline(time.Now().Add(3 * time.Second))
 	// Read first message for session authentication
 	if !scanner.Scan() {
 		log.Printf("[Backend TCP] Disconnected before authentication: %s", remoteAddr)
@@ -47,34 +51,23 @@ func handleTCPConnection(conn net.Conn) {
 	}
 
 	firstMsg := strings.TrimSpace(scanner.Text())
-	var userID string
-
-	// Attempt JSON decode of auth payload: {"type":"auth","token":"..."} or {"user_id":"..."}
+	// Identity comes exclusively from a verified JWT, never a client-supplied ID.
 	var authPayload struct {
-		Type   string `json:"type"`
-		Token  string `json:"token"`
-		UserID string `json:"user_id"`
+		Type  string `json:"type"`
+		Token string `json:"token"`
 	}
-	if err := json.Unmarshal([]byte(firstMsg), &authPayload); err == nil {
-		if authPayload.Token != "" {
-			if claims, err := auth.ValidateToken(authPayload.Token); err == nil {
-				userID = claims.UserID
-			}
-		}
-		if userID == "" && authPayload.UserID != "" {
-			userID = authPayload.UserID
-		}
-	}
-
-	// Fallback to plain text UserID if not JSON
-	if userID == "" {
-		userID = firstMsg
-	}
-
-	if userID == "" {
+	if err := json.Unmarshal([]byte(firstMsg), &authPayload); err != nil || authPayload.Type != "auth" || authPayload.Token == "" {
 		conn.Write([]byte("{\"type\":\"error\",\"message\":\"authentication_failed\"}\n"))
 		return
 	}
+	claims, err := auth.ValidateToken(authPayload.Token)
+	if err != nil {
+		conn.Write([]byte("{\"type\":\"error\",\"message\":\"authentication_failed\"}\n"))
+		return
+	}
+	userID := claims.UserID
+	_ = conn.SetReadDeadline(time.Time{})
+	_ = conn.SetWriteDeadline(time.Time{})
 
 	client := &tcp.Client{
 		Conn:   conn,
@@ -88,7 +81,7 @@ func handleTCPConnection(conn net.Conn) {
 		"user_id": userID,
 		"status":  "ok",
 	})
-	conn.Write(append(authConfirm, '\n'))
+	client.Send <- authConfirm
 
 	log.Printf("[Backend TCP] Session authenticated: %s -> UserID: %s", remoteAddr, userID)
 
@@ -96,4 +89,3 @@ func handleTCPConnection(conn net.Conn) {
 	go client.WritePump()
 	client.ReadPump()
 }
-

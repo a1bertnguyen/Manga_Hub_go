@@ -1,120 +1,139 @@
-# MangaHub â€” Technical Reasoning and Verification Report
+# MangaHub Technical Reasoning and Verification Report
 
-> **Course:** IT096IIU â€” Net-Centric Programming (International University, VNU-HCM)  
-> **Target Specification:** Version 3.0 (Official Student Specification)  
-> **Assessment:** Course Project replacing Midterm Exam (30%)  
-> **Grade Target:** Level A / A+  
-> **Date:** November 2026
+IT096IIU - Net-Centric Programming | International University, VNU-HCM
 
----
+Student specification v3.0 | 20 November 2026
 
-## 1. System Architecture & Process Boundaries
+| Team member ID | Contribution record |
+| --- | --- |
+| ITITWE23049 | To be confirmed by this member |
+| ITITIU22130 | To be confirmed by this member |
 
-MangaHub is engineered as a true 3-tier distributed system strictly adhering to Course Specification Version 3.0. Rather than implementing isolated protocol toys, MangaHub integrates **5 core network protocols** across **3 independent standalone OS processes**:
+Measured connected verification: 19/19 checks passed, including a three-TUI integration test under the Go race detector.
 
-```
-                                  +-----------------------------+
-                                  |   cmd/catalog (Microservice)|
-                                  |   gRPC Server (:9092)       |
-                                  |   SQLite (catalog.db)       |
-                                  +--------------^--------------+
-                                                 |
-                                                 | gRPC (Protobuf, 2s deadline)
-                                                 |
-                                  +--------------v--------------+
-                                  |   cmd/backend (Gateway)     |
-                                  |   HTTP REST (:8080)         |
-                                  |   TCP Sync Hub (:9090)      |
-                                  |   UDP Notifier (:9091)      |
-                                  |   WebSocket Chat (:8080/ws) |
-                                  |   SQLite (backend.db)       |
-                                  +---^----------^-----------^--+
-                                      |          |           |
-            +-------------------------+          |           +-------------------------+
-            | HTTP REST (JWT)                    | TCP (Sync)                          | UDP (Alerts) & WS
-            |                                    | (Per-user isolation)                |
-+-----------v------------------------------------v-------------------------------------v-----------+
-|                                      cmd/tui (Go tview Client)                                    |
-|   Screens: [F1] Catalog Browser | [F2] My Library | [F3] Discussion | [F4] Notifications | [F5] Help  |
-+---------------------------------------------------------------------------------------------------+
-```
+Implementation and verification are recorded below. Individual contribution allocation and the live ownership demonstration remain to be confirmed by the two members.
 
-### Process Isolation and Data Ownership
-1. **Catalog Microservice (`cmd/catalog`):** Standalone gRPC service running on port `9092`. Sole owner of `catalog.db` (manga titles, metadata, total chapters). `cmd/backend` never touches `catalog.db` directly.
-2. **Backend Gateway (`cmd/backend`):** Standalone multi-protocol server running Gin HTTP (`:8080`), TCP Sync Hub (`:9090`), UDP Notifier (`:9091`), and WebSocket Chat Hub (`:8080/ws`). Sole owner of `backend.db` (user credentials, reading progress).
-3. **Interactive TUI Client (`cmd/tui`):** Standalone terminal interface built with `rivo/tview`. Manages background goroutines for TCP, UDP, and WebSocket listeners while driving transactional HTTP workflows.
 
----
+## 1. System architecture
 
-## 2. Why These Technologies? (Technology-to-Feature Contract)
+MangaHub tracks metadata and reading progress. It does not host manga reading pages. Three independently launched Go programs separate the user interface, the Gin gateway and the catalog service.
 
-| Protocol | Feature | Why This Technology? | What Can Fail & Mitigation |
-| :--- | :--- | :--- | :--- |
-| **HTTP/REST** (`:8080`) | **F01:** Auth & JWT<br>**F02/F03:** CRUD | Stateless request/response; standardized status codes (200, 400, 401, 404, 409); HMAC-SHA256 JWT eliminates session lookups. | Network timeout &rarr; 5s client deadline; Stale token &rarr; 401 &rarr; redirect to login; Duplicate user &rarr; 409 Conflict. |
-| **TCP Socket** (`:9090`) | **F03:** Private Reading Progress Sync | In-order, reliable delivery with stream framing (`\n` delimiter); zero polling; immediate push to peer sessions under same user. | Half-open connection &rarr; TCP keepalive & EOF detection; dead connection pruned under mutex; peer TUI reconnects with backoff. |
-| **UDP Datagram** (`:9091`) | **F04:** New Chapter Broadcast | Connectionless, low-overhead datagrams (8-byte header); best-effort broadcast; server never blocks on unreachable receivers. | Packet loss &rarr; alerts are ephemeral/advisory; unreachable clients silently dropped without stalling broadcast loop. |
-| **WebSocket** (`:8080/ws`) | **F05:** Multi-Room Live Discussion | Full-duplex bidirectional framing over single TCP connection; sub-millisecond chat routing; strict room isolation. | Slow consumer buffer full &rarr; Hub drops client under mutex lock; client disconnect unregisters cleanly from room. |
-| **gRPC** (`:9092`) | **F06:** Catalog Service Boundary | Strongly-typed Protobuf contract; binary HTTP/2 multiplexing; microservice process decoupling. | Catalog crash &rarr; 2.0s bounded context deadline; Gin returns HTTP 503 Service Unavailable instead of hanging. |
+Architecture: TUI -- HTTP/TCP/UDP/WS --> Gin backend -- gRPC --> Catalog; backend SQLite owns users/progress, catalog SQLite owns authoritative metadata.
 
----
 
-## 3. Implementation & Verification: Interaction Flows
+### Data and process ownership
 
-### Flow 1: F03 Reading Progress Sync
-1. User A updates reading progress on TUI Instance 1 (`PUT /users/progress {manga_id: "one-piece", chapter: 1050}`).
-2. Gin validates chapter &le; total chapters, commits to `backend.db`, and returns `200 OK`.
-3. Gin notifies internal TCP Hub with `(user_id, manga_id, 1050)`.
-4. TCP Hub searches active connections, filters strictly by `user_id`, and writes framed JSON: `{"action":"progress_update","manga_id":"one-piece","current_chapter":1050}\n`.
-5. TUI Instance 2 receives frame in background goroutine and dispatches non-blocking redraw to update visible progress instantly without polling. User B receives nothing.
+cmd/catalog owns the authoritative manga catalog and seeds 54 titles from data/manga_seed.json only when empty. cmd/backend stores users and user_progress, enforces JWT identity and handles library writes. A legacy manga table remains in the backend schema, but catalog validation and user-facing search/detail use real gRPC calls to the separate catalog process.
 
-### Flow 2: F04 Admin Chapter Release & UDP Alert
-1. Admin triggers chapter release (`POST /admin/release {manga_id: "one-piece", total_chapters: 1111}`).
-2. Gin invokes gRPC unary RPC `UpdateChapters()` on `cmd/catalog` with a 2.0s context deadline.
-3. Catalog updates `catalog.db` and returns `UpdateChaptersResponse{success: true}`.
-4. Gin's UDP Hub retrieves all registered subscriber addresses and broadcasts JSON datagrams via `net.UDPConn.WriteToUDP()`.
-5. Subscribed TUIs parse datagram and display in-app notification banner (`🔔 New Chapter Available!`). Unsubscribed clients receive nothing.
+The TUI performs HTTP transactions and runs TCP, UDP and WebSocket workers. Network callbacks dispatch widget changes through tview's event loop. Shared connection and authentication state uses a mutex. SQLite writes are serialized through one backend connection; an UPDATE ... RETURNING statement binds every response version to its own committed update.
 
----
 
-## 4. Verification Test Matrix
+### Configuration and trust boundaries
 
-All 15 verification scenarios passed with 100% success rate:
-- **T01 (F01 Auth & Restart):** User registration & bcrypt hash verified; credentials persist across backend restart.
-- **T02 (F01 Auth Negative):** Invalid credentials &rarr; 401 Unauthorized; duplicate user &rarr; 409 Conflict.
-- **T03 (F02 Catalog Search):** gRPC `SearchManga` returns matches; empty query returns empty array without error.
-- **T04 (F02 Full Catalog):** All 54 seeded records retrieved via gRPC; dynamic detail loading verified.
-- **T05 (F03 Library CRUD):** Add manga to reading list; stored in SQLite `libraries` table.
-- **T06 (F03 Chapter Limit):** Progress > total chapters rejected with `400 Bad Request`.
-- **T07 (F03 TCP Peer Sync):** Session A updates chapter; Session B updates within 4ms without refresh.
-- **T08 (F03 User Isolation):** User A update does not leak to User C's session.
-- **T09 (F04 UDP Alert):** Subscribed TUIs receive datagram and show alert banner within 2ms.
-- **T10 (F04 Unsub Isolation):** Unsubscribed client receives 0 datagrams; server continues normally.
-- **T11 (F05 Live Chat):** Alice and Bob chat in `#general`; auto-scrolls to bottom.
-- **T12 (F05 Room Isolation):** Messages in `#general` do not leak into `#spoilers`.
-- **T13 (F05 WS Disconnect):** Client disconnects abruptly; Hub unregisters without crashing.
-- **T14 (F06 Fault Injection):** `cmd/catalog` stopped &rarr; Gin times out at 2.0s &rarr; returns bounded HTTP 503.
-- **T15 (F06 Service Recovery):** `cmd/catalog` restarted &rarr; gRPC recovers immediately.
+Ports and database paths are supplied through environment variables. The backend loads JWT_SECRET at startup. Chapter release additionally requires X-Admin-Key matching ADMIN_API_KEY; an empty key disables release. TCP and WebSocket identity comes from verified JWT claims, never a supplied username or user ID. This localhost teaching setup does not provide TLS for remote deployment.
 
----
 
-## 5. Defect Analysis & AI Record
+## 2. Why these technologies?
 
-### Defect 1: TUI UI Thread Deadlock
-- **Symptom:** Terminal UI froze on tab switch or incoming TCP/UDP event.
-- **Root Cause:** In `tview`, calling `QueueUpdateDraw()` from within an active draw loop caused a self-deadlock on `<-ch`.
-- **Fix:** Dispatched UI redraws into non-blocking goroutines (`go func() { s.App.QueueUpdateDraw(...) }()`).
 
-### Defect 2: Protobuf Nil Message Info Panic
-- **Symptom:** `UpdateChapters` RPC triggered `panic: invalid nil message info` in `cmd/catalog`.
-- **Root Cause:** Hand-crafted message structs omitted pointer links to `file_proto_manga_proto_msgTypes[7]` and `[8]`.
-- **Fix:** Properly mapped `ms.StoreMessageInfo(mi)` in `Reset()` and added descriptor methods.
+### HTTP REST
 
-### Defect 3: WebSocket Concurrent Map Write
-- **Symptom:** Backend crashed with `fatal error: concurrent map writes` during client disconnection in chat broadcast.
-- **Root Cause:** Unsafe `delete(h.clients, client)` was called while holding read lock `h.mu.RLock()`.
-- **Fix:** Gathered dropped clients into a temporary slice under `RLock()`, then safely removed them under write `Lock()`.
+Feature: authentication, search, library and progress. Data flow: TUI JSON request -> Gin -> SQLite or gRPC. Why: explicit methods, statuses and request/response semantics. Failure: invalid credentials return 401; invalid input 400; catalog transport failure 503. The TUI uses a five-second HTTP timeout. Alternative: RPC-only clients would lose the simple inspectable REST contract.
 
-### AI Collaboration Record
-1. **Architecture Decoupling:** AI assisted in structuring Gin routes and separating monolithic files into focused packages.
-2. **Review & Correction:** AI suggested synchronous `QueueUpdateDraw` calls; we tested, detected the deadlock, rejected the advice, and implemented decoupled background dispatches.
-3. **Concurrency Hardening:** Used AI to review mutex lock patterns in the WebSocket Hub, identifying and eliminating the concurrent map mutation race condition.
+
+### TCP
+
+Feature: push progress to another session of the same account. Flow: committed update -> user-scoped Hub -> newline JSON frame -> peer TUI. Why: ordered reliable byte transport with long-lived connections. A stream needs an explicit newline delimiter. Failure: authentication and socket writes have deadlines; disconnect unregisters the client; slow buffers are dropped; the client retries. Reliability does not imply an offline event history.
+
+
+### UDP
+
+Feature: best-effort chapter alerts. Flow: release -> gRPC update -> one JSON datagram per subscribed return address -> visible TUI notification. Why: lightweight fan-out; loss is acceptable for advisory alerts. Subscribe/unsubscribe use the same source socket. Failure: packets can be lost; periodic renewal retains subscriptions. An acknowledged message queue would offer stronger delivery at greater complexity.
+
+
+### WebSocket
+
+Feature: interactive room discussion. Flow: authenticated HTTP upgrade -> Hub room membership -> full-duplex framed chat. Why: immediate bidirectional messages without polling. Server claims fix the author and room. Failure: bounded handshakes/writes and disconnect cleanup; another room cannot receive a room's messages. The TUI reconnects when Discussion is re-entered; durable chat is outside scope.
+
+
+### gRPC
+
+Feature: the independent catalog boundary. Flow: Gin -> generated Protobuf client -> catalog SQLite -> typed response. Why: an explicit typed service contract and real service-to-service calls. Failure: NotFound maps to 404, invalid requests to 400, and unavailable/deadline errors to 503. Library writes stop before mutation when catalog validation fails. REST between these services would not demonstrate the required gRPC boundary.
+
+Redis is not implemented. Under v3.0 it is optional; the verification effort focuses on identity, isolation, concurrency and controlled failures.
+
+
+## 3. Important end-to-end flows
+
+
+### Reading progress and same-user synchronization
+
+Gin validates a non-negative chapter without narrowing it to int32, checks it against the catalog total and validates the reading status. One atomic statement updates the stored chapter/status/version. The Hub publishes only after success. A peer renders the change without refresh; stale or duplicate event versions cannot roll the displayed progress back. An unavailable catalog returns an error and leaves the stored version and chapter unchanged.
+
+
+### Protected release and best-effort notifications
+
+Release is denied before calling the catalog unless both credentials are present and valid. Successful releases update the authoritative count before notifying registered UDP addresses. The TUI's u action sends unsubscribe before closing its socket. Delivery is advisory: disconnected or unregistered receivers do not gain a guaranteed replay.
+
+
+## 4. Verification and observed results
+
+The retained connected verifier builds independent catalog/backend processes with temporary databases, ports, accounts and keys. It exercises real sockets and launches three actual tview applications using tcell simulation screens. It does not claim that two students have completed the human live demonstration.
+
+| Connected scenario | Result | Observed |
+| --- | --- | --- |
+| Independent processes | PASS | Go catalog and Gin backend started with separate temporary SQLite files |
+| Admin requires login | PASS | HTTP 401 |
+| Admin requires configured key | PASS | HTTP 403 |
+| HTTP -> gRPC catalog | PASS | HTTP 200; 54 seeded titles |
+| Unauthorized REST | PASS | Unauthenticated library request: HTTP 401 |
+| TCP push and user isolation | PASS | Two same-user sockets received chapter 1; different-user socket received nothing |
+| TCP requires verified identity | PASS | Tokenless user_id accepted: False |
+| TCP ignores forged user_id with valid JWT | PASS | Identity derived from the JWT claims |
+| Expired JWT rejected across protocols | PASS | REST, TCP and WebSocket rejected the same expired signed token. |
+| Concurrent progress commits | PASS | Eight concurrent HTTP updates had distinct versions and a matching final stored chapter. |
+| UDP subscriptions and release | PASS | Two subscribed sockets received a chapter alert; unsubscribed socket received nothing |
+| WebSocket rejects missing JWT | PASS | Upgrade without JWT: HTTP 401 |
+| WebSocket room delivery | PASS | Same-room client received chat; other room received nothing |
+| Live TUI integration under race detector | PASS | Peer progress, UDP alerts/unsubscribe, chat/isolation, disconnect and navigation rendered in three TUIs. |
+| Chapter overflow rejected | PASS | Above-total update: HTTP 400 |
+| Bounded catalog failure | PASS | HTTP 503 after 0.022s |
+| Progress validation during catalog failure | PASS | Catalog stopped; above-total update returned HTTP 503 |
+| Library addition during catalog failure | PASS | Catalog stopped; add returned HTTP 503 |
+| Backend restart persistence | PASS | Restarted real backend; stored chapter = 1 |
+
+Reproduce from the repository root: python scripts/verify_connected.py --with-tui. Detailed results and the embedded live TUI test output are in docs/verification/connected-review-2026-11-20.json. The verifier exits nonzero on failure and does not modify the user's saved session or data.
+
+From the Go module: go test ./... -count=1; go test -race ./... -count=1; go vet ./.... The unit suite adds zero/negative/overflow chapters, missing catalog responses, error mapping on both route aliases, token algorithm/expiry/identity checks and twelve concurrent progress updates. Retained Go results are in docs/verification/go-tests.jsonl and race-tests.txt.
+
+
+## 5. Reflection and ownership
+
+
+### A real defect: identity validation and fail-open writes
+
+Symptom: the initial connected review passed 9/12 checks, but a tokenless TCP user_id was accepted, WebSocket upgraded without JWT, and an above-total progress update returned HTTP 200 after the catalog process stopped. Cause: identity fallbacks bypassed JWT, the WebSocket route lacked authentication, and the library handler ignored gRPC errors before writing SQLite.
+
+Fix: remove TCP identity fallbacks; share strict HS256/expiry/identity validation across REST and sockets; derive WebSocket author/room on the server; centralize mandatory catalog validation before both library write paths. Retest: the original triggers now fail safely while valid same-user synchronization, room chat, UDP release and restart persistence continue to pass. The table on the previous page records the current measured run.
+
+
+### Known limitations and design tradeoffs
+
+Progress uses last committed write semantics with increasing versions, not compare-and-swap conflict rejection. Clients discard stale events, but TCP updates have no durable offline replay; refresh after reconnect reconciles data. SQLite serializes writes and is suitable for the class-scale workload rather than a high-write cluster. Rooms and alert feeds are in memory. UDP can lose packets. Tokens are validated on connection, not continuously revalidated throughout an open socket. Remote deployment would require TLS, secret management and additional hardening. Redis is not used.
+
+
+### Member contributions and live ownership
+
+| Member ID | Contribution record |
+| --- | --- |
+| ITITWE23049 | Member must confirm the components and tests they implemented or reviewed. |
+| ITITIU22130 | Member must confirm the components and tests they implemented or reviewed. |
+
+Both members should be able to explain one complete request path, the TCP framing boundary, the UDP delivery limitation, room isolation, and one failure/debug case without AI assistance. The report does not invent a contribution split.
+
+
+### Three recorded AI-assisted interactions
+
+1. Specification review: AI compared v3.0 with code, distinguished the older points rubric from the current letter-grade criteria, and created a connected verifier. 2. Review decision: an initially passing unit suite was not accepted as proof of A readiness; real-process tests reproduced three missing boundaries and drove the fixes. 3. Implementation and verification: AI assisted the TUI redesign, auth/failure fixes and regression tests; actual three-TUI race-enabled execution verified peer progress, UDP unsubscribe, authenticated chat and disconnect behavior.
+
+Reference: IT096IU MangaHub Project v3.0, sections 3-8; committed .proto, source/tests and retained verification outputs. Final assessment remains based on the live application, this evidence and both students' explanations.

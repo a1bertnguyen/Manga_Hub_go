@@ -2,252 +2,173 @@ package tui
 
 import (
 	"fmt"
-	"strings"
-
-	"mangahub/pkg/models"
-
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
+	"mangahub/pkg/models"
+	"strings"
 )
 
-// buildBrowserView constructs the 2-pane Manga Catalog & Details view
 func (c *UIController) buildBrowserView() tview.Primitive {
-	// 1. Search Bar at Top of Left Pane
-	searchBar := tview.NewInputField().
-		SetLabel(" 🔍 Search: ").
-		SetFieldWidth(32).
-		SetPlaceholder("Title or author... (/ to search)")
-
-	// 2. Catalog Table
-	c.state.CatalogTable = tview.NewTable().
-		SetBorders(true).
-		SetSelectable(true, false)
-
+	search := tview.NewInputField().SetLabel(" Search  ").SetPlaceholder("Title or author...").SetFieldWidth(0)
+	search.SetFieldBackgroundColor(colorField).SetFieldTextColor(colorText).SetLabelColor(colorAccent)
+	search.SetPlaceholderTextColor(colorMuted)
+	genre := tview.NewDropDown().SetLabel(" Genre   ").SetFieldWidth(20)
+	genre.SetOptions([]string{"All genres", "Action", "Adventure", "Comedy", "Drama", "Fantasy", "Romance", "Sci-Fi", "Shounen", "Seinen", "Shoujo", "Josei"}, nil)
+	genre.SetCurrentOption(0).SetSelectedFunc(func(value string, _ int) {
+		c.genre = value
+		if value == "All genres" {
+			c.genre = ""
+		}
+		c.refreshMangaCatalog(search.GetText())
+	})
+	genre.SetFieldBackgroundColor(colorField).SetFieldTextColor(colorText).SetLabelColor(colorAccent)
+	table := tview.NewTable()
+	styleTable(table)
+	c.state.CatalogTable = table
 	c.setupCatalogTableHeader()
-
-	// 3. Right-side Details View
-	c.state.DetailView = tview.NewTextView().
-		SetDynamicColors(true).
-		SetWordWrap(true).
-		SetScrollable(true)
-	c.state.DetailView.SetBorder(true).
-		SetTitle(" 📖 Manga Details (Unary gRPC via Gin) ").
-		SetTitleColor(tcell.ColorTeal)
-	c.state.DetailView.SetText("\n [yellow]Select any manga from the catalog to view details.[white]\n\n" +
-		" • Press [yellow]Enter[white] or [yellow]'a'[white] to add to personal library.\n" +
-		" • Press [yellow]/[white] to search catalog.\n" +
-		" • Press [yellow]r[white] to refresh.")
-
-	// Search Actions
-	searchBar.SetDoneFunc(func(key tcell.Key) {
+	details := tview.NewTextView().SetDynamicColors(true).SetWordWrap(true).SetScrollable(true)
+	stylePanel(details.Box, "MANGA DETAILS")
+	details.SetText("[#5eead4::b]Find your next story.[-:-:-]\n\nSelect a title to explore its synopsis, author and chapters.\n\n[#8fa4bd]Sign in through Account to browse the catalog and build your library.[-]")
+	c.state.DetailView = details
+	search.SetDoneFunc(func(key tcell.Key) {
 		if key == tcell.KeyEnter {
-			c.refreshMangaCatalog(searchBar.GetText())
-			c.state.App.SetFocus(c.state.CatalogTable)
-		} else if key == tcell.KeyEscape || key == tcell.KeyDown {
-			c.state.App.SetFocus(c.state.CatalogTable)
+			c.refreshMangaCatalog(search.GetText())
+			c.state.App.SetFocus(table)
+		}
+		if key == tcell.KeyEscape {
+			c.state.App.SetFocus(table)
 		}
 	})
-
-	// Table Dynamic Selection -> Update details panel live via gRPC
-	c.state.CatalogTable.SetSelectionChangedFunc(func(row, column int) {
-		if row <= 0 || row > len(c.state.MangaCatalog) {
-			return
+	table.SetSelectionChangedFunc(func(row, _ int) {
+		if row > 0 && row <= len(c.state.MangaCatalog) {
+			m := c.state.MangaCatalog[row-1]
+			c.loadMangaDetailAsync(m.ID, m)
 		}
-		m := c.state.MangaCatalog[row-1]
-		c.loadMangaDetailAsync(m.ID, m)
 	})
-
-	// Table Selection Action -> Add to library
-	c.state.CatalogTable.SetSelectedFunc(func(row, column int) {
-		if row <= 0 || row > len(c.state.MangaCatalog) {
-			return
+	table.SetSelectedFunc(func(row, _ int) {
+		if row > 0 && row <= len(c.state.MangaCatalog) {
+			c.showAddToLibraryDialog(c.state.MangaCatalog[row-1])
 		}
-		m := c.state.MangaCatalog[row-1]
-		c.showAddToLibraryDialog(m)
 	})
-
-	// Keyboard shortcuts inside catalog table
-	c.state.CatalogTable.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+	table.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		switch event.Rune() {
-		case 'a', 'A':
-			row, _ := c.state.CatalogTable.GetSelection()
-			if row > 0 && row <= len(c.state.MangaCatalog) {
-				c.showAddToLibraryDialog(c.state.MangaCatalog[row-1])
-				return nil
-			}
 		case '/':
-			c.state.App.SetFocus(searchBar)
+			c.state.App.SetFocus(search)
+			return nil
+		case 'g', 'G':
+			c.state.App.SetFocus(genre)
 			return nil
 		case 'r', 'R':
-			searchBar.SetText("")
-			c.refreshMangaCatalog("")
+			c.refreshMangaCatalog(search.GetText())
+			return nil
+		case 'a', 'A':
+			row, _ := table.GetSelection()
+			if row > 0 && row <= len(c.state.MangaCatalog) {
+				c.showAddToLibraryDialog(c.state.MangaCatalog[row-1])
+			}
 			return nil
 		}
 		return event
 	})
-
-	leftPane := tview.NewFlex().
-		SetDirection(tview.FlexRow).
-		AddItem(searchBar, 1, 0, false).
-		AddItem(c.state.CatalogTable, 0, 1, true)
-	leftPane.SetBorder(true).
-		SetTitle(" 📚 Manga Catalog (HTTP REST -> gRPC :9092) ").
-		SetTitleColor(tcell.ColorTeal)
-
-	split := tview.NewFlex().
-		AddItem(leftPane, 0, 3, true).
-		AddItem(c.state.DetailView, 0, 2, false)
-
-	return split
+	left := tview.NewFlex().SetDirection(tview.FlexRow).
+		AddItem(search, 1, 0, false).AddItem(genre, 2, 0, false).AddItem(table, 0, 1, true)
+	stylePanel(left.Box, "DISCOVER / CATALOG")
+	c.focus["browser"] = []tview.Primitive{table, details, search, genre}
+	return newAdaptiveSplit(left, details, 105)
 }
 
 func (c *UIController) setupCatalogTableHeader() {
-	headers := []struct {
-		Text  string
-		Width int
-	}{
-		{"ID", 10},
-		{"Title", 28},
-		{"Author", 18},
-		{"Genres", 20},
-		{"Chapters", 10},
-		{"Status", 12},
-	}
-
-	for col, h := range headers {
-		cell := tview.NewTableCell(fmt.Sprintf(" [yellow:b]%s[-:-:-]", h.Text)).
-			SetTextColor(tcell.ColorYellow).
-			SetSelectable(false).
-			SetAlign(tview.AlignLeft)
+	for col, title := range []string{"TITLE", "CH.", "STATUS"} {
+		cell := tview.NewTableCell(" " + title).SetSelectable(false).SetTextColor(colorMuted).SetAttributes(tcell.AttrBold)
 		c.state.CatalogTable.SetCell(0, col, cell)
 	}
 }
 
 func (c *UIController) refreshMangaCatalog(query string) {
-	c.state.SetStatus(fmt.Sprintf("[yellow]Fetching catalog from gRPC (:9092) for '%s'...[white]", query))
+	c.search = query
+	c.catalogRequest++
+	request := c.catalogRequest
+	genre := c.genre
+	if c.state.username() == "" {
+		c.state.DetailView.SetText("[#5eead4::b]Your next read starts here.[-:-:-]\n\nSign in or create an account to explore the catalog.\n\n[#8fa4bd]Press F10 to open Account.[-]")
+		c.state.SetStatus("Sign in to browse the catalog. Press F10 for Account.")
+		return
+	}
+	c.state.SetStatus("Loading catalog...")
 	go func() {
-		mangas, err := c.api.FetchManga(query, "")
+		mangas, err := c.api.FetchManga(query, genre)
 		c.state.App.QueueUpdateDraw(func() {
-			if err != nil {
-				errMsg := err.Error()
-				if strings.Contains(errMsg, "401") || strings.Contains(errMsg, "Authorization") {
-					c.state.SetStatus("[yellow]Login required to access catalog. Press '0' or F10 to login.[white]")
-					c.state.DetailView.SetText("\n [yellow:b]🔐 Authentication Required[-:-:-]\n\n" +
-						" Please log in to browse the catalog and synchronize reading progress.\n\n" +
-						" • Press [green]'0'[white] or [green]F10[white] to Login or Register.\n" +
-						" • Or click on [yellow][0] Account[white] in the top navigation bar.")
-					return
-				}
-				c.state.SetStatus(fmt.Sprintf("[red]Fetch catalog failed: %v[white]", err))
-				c.state.DetailView.SetText(fmt.Sprintf(
-					"\n [red:b]ERROR: Could not reach Catalog Service[-:-:-]\n\n"+
-						" [white]Details: %v\n\n"+
-						" [yellow]NOTE:[white] If Catalog Service (:9092) is stopped, the backend\n"+
-						" returns HTTP 503 (bounded failure within 2-second deadline).",
-					err,
-				))
+			if request != c.catalogRequest {
 				return
 			}
-
+			if err != nil {
+				c.state.SetStatus(fmt.Sprintf("[red]Catalog unavailable: %s[-]", tview.Escape(err.Error())))
+				c.state.DetailView.SetText(fmt.Sprintf("[red::b]Could not load the catalog[-:-:-]\n\n%s\n\n[#8fa4bd]Check the backend and catalog processes, then press r to retry. If your session expired, sign in again with F10.[-]", tview.Escape(err.Error())))
+				return
+			}
+			c.detailRequest++ // Invalidate detail responses from the previous result set.
 			c.state.MangaCatalog = mangas
 			table := c.state.CatalogTable
-			for i := table.GetRowCount() - 1; i > 0; i-- {
-				table.RemoveRow(i)
+			table.Clear()
+			c.setupCatalogTableHeader()
+			for i, m := range mangas {
+				table.SetCell(i+1, 0, tview.NewTableCell(" "+tview.Escape(m.Title)).SetTextColor(colorText).SetExpansion(1).SetMaxWidth(40))
+				table.SetCell(i+1, 1, tview.NewTableCell(fmt.Sprint(m.TotalChapters)).SetTextColor(colorAccent).SetAlign(tview.AlignRight))
+				table.SetCell(i+1, 2, tview.NewTableCell(" "+tview.Escape(strings.ToUpper(m.Status))).SetTextColor(colorMuted).SetMaxWidth(10))
 			}
-
-			for idx, m := range mangas {
-				row := idx + 1
-				genres := strings.Join(m.Genres, ", ")
-
-				statusColor := "[green]"
-				if strings.ToLower(m.Status) == "ongoing" {
-					statusColor = "[yellow]"
-				}
-
-				table.SetCell(row, 0, tview.NewTableCell(" "+m.ID).SetTextColor(tcell.ColorGray))
-				table.SetCell(row, 1, tview.NewTableCell(" "+m.Title).SetTextColor(tcell.ColorWhite))
-				table.SetCell(row, 2, tview.NewTableCell(" "+m.Author).SetTextColor(tcell.ColorLightGray))
-				table.SetCell(row, 3, tview.NewTableCell(" "+genres).SetTextColor(tcell.ColorCadetBlue))
-				table.SetCell(row, 4, tview.NewTableCell(fmt.Sprintf(" %d", m.TotalChapters)).SetTextColor(tcell.ColorYellow))
-				table.SetCell(row, 5, tview.NewTableCell(fmt.Sprintf(" %s%s[white]", statusColor, strings.ToUpper(m.Status))))
-			}
-
 			if len(mangas) == 0 {
-				c.state.SetStatus(fmt.Sprintf("[yellow]No manga found matching '%s'[white]", query))
-				c.state.DetailView.SetText(fmt.Sprintf(
-					"\n [yellow:b]🔍 No Results Found[-:-:-]\n\n"+
-						" No manga matched your search query: [white]'%s'[white]\n\n"+
-						" • Press [yellow]'r'[white] to reset search and view all manga.\n"+
-						" • Press [yellow]'/'[white] to search with a different keyword.",
-					query,
-				))
+				table.SetCell(1, 0, tview.NewTableCell(" No matching titles").SetSelectable(false).SetTextColor(colorMuted))
+				c.state.DetailView.SetText("[#5eead4::b]No stories found.[-:-:-]\n\nTry another title, author or genre.\n\n[#8fa4bd]Use / to search or g to change genre.[-]")
 			} else {
-				c.state.SetStatus(fmt.Sprintf("[green]Loaded %d manga from Catalog Service[white]", len(mangas)))
+				table.Select(1, 0).ScrollToBeginning()
 				c.loadMangaDetailAsync(mangas[0].ID, mangas[0])
 			}
+			c.state.SetStatus(fmt.Sprintf("%d titles found. Select a story to see more.", len(mangas)))
 		})
 	}()
 }
 
 func (c *UIController) loadMangaDetailAsync(mangaID string, fallback *models.Manga) {
+	c.detailRequest++
+	request := c.detailRequest
 	if fallback != nil {
 		c.renderMangaDetails(fallback)
 	}
 	go func() {
 		detail, err := c.api.GetMangaDetail(mangaID)
-		if err != nil {
-			if strings.Contains(err.Error(), "503") || strings.Contains(err.Error(), "unavailable") {
-				c.state.App.QueueUpdateDraw(func() {
-					c.state.DetailView.SetText(fmt.Sprintf(
-						"\n [red:b]HTTP 503 Service Unavailable[-:-:-]\n\n"+
-							" [white]Catalog Service (:9092) is unreachable.\n"+
-							" gRPC client deadline reached after 2 seconds.\n\n"+
-							" Details: %v", err,
-					))
-				})
-			}
-			return
-		}
 		c.state.App.QueueUpdateDraw(func() {
+			if request != c.detailRequest {
+				return
+			}
+			if err != nil {
+				c.state.SetStatus(fmt.Sprintf("[red]Detail refresh failed: %s[-]", tview.Escape(err.Error())))
+				return
+			}
 			c.renderMangaDetails(detail)
 		})
 	}()
 }
 
 func (c *UIController) renderMangaDetails(m *models.Manga) {
-	genres := strings.Join(m.Genres, ", ")
-	statusBadge := fmt.Sprintf("[green:b] %s [-:-:-]", strings.ToUpper(m.Status))
-	if strings.ToLower(m.Status) == "ongoing" {
-		statusBadge = fmt.Sprintf("[yellow:b] %s [-:-:-]", strings.ToUpper(m.Status))
-	}
-
-	detailText := fmt.Sprintf(
-		"\n [yellow:b]%s[-:-:-]\n"+
-			" [gray]ID:[white] %s    [gray]Status:[white] %s\n"+
-			" [gray]Author:[white] [cyan]%s[white]\n"+
-			" [gray]Genres:[white] [blue]%s[white]\n"+
-			" [gray]Total Chapters:[white] [yellow:b]%d chapters[-:-:-]\n\n"+
-			" [yellow:b]Synopsis / Summary:[-:-:-]\n %s\n\n"+
-			" ────────────────────────────────────────────────────────────\n"+
-			" [green]Press [Enter] or 'a' to Add to Personal Library[white]\n"+
-			" [gray]Press '/' to search | 'r' to refresh catalog[white]",
-		m.Title, m.ID, statusBadge, m.Author, genres, m.TotalChapters, m.Description,
-	)
-	c.state.DetailView.SetText(detailText)
+	c.state.DetailView.SetText(fmt.Sprintf(
+		"[#5eead4::b]%s[-:-:-]\n[#8fa4bd]by %s[-]\n\n[#fbbf24]%s[-]  /  %d chapters\n\n[#8fa4bd]GENRES[-]\n%s\n\n[#8fa4bd]SYNOPSIS[-]\n%s\n\n[#5eead4]Enter / a  Add to library[-]",
+		tview.Escape(m.Title), tview.Escape(m.Author), tview.Escape(strings.ToUpper(m.Status)), m.TotalChapters, tview.Escape(strings.Join(m.Genres, " / ")), tview.Escape(m.Description)))
+	c.state.DetailView.ScrollToBeginning()
 }
 
 func (c *UIController) showAddToLibraryDialog(m *models.Manga) {
-	if c.state.Username == "" {
+	if c.state.username() == "" {
 		c.state.SetStatus("[red]Please login first (Press 0 or F10) to add to library[white]")
 		return
 	}
 
 	modal := tview.NewModal().
-		SetText(fmt.Sprintf("Add '%s' to your reading library?", m.Title)).
+		SetText(fmt.Sprintf("Add '%s' to your reading library?", tview.Escape(m.Title))).
 		AddButtons([]string{"Reading", "Plan to Read", "Completed", "Cancel"}).
 		SetDoneFunc(func(buttonIndex int, buttonLabel string) {
 			c.state.Pages.RemovePage("dialog")
-			if buttonLabel == "Cancel" {
+			c.state.App.SetFocus(c.state.CatalogTable)
+			if buttonIndex < 0 || buttonLabel == "Cancel" {
 				return
 			}
 			status := strings.ToLower(strings.ReplaceAll(buttonLabel, " ", "_"))
@@ -264,6 +185,7 @@ func (c *UIController) showAddToLibraryDialog(m *models.Manga) {
 			}()
 		})
 
+	modal.SetBackgroundColor(colorPanel).SetButtonBackgroundColor(colorAccent).SetButtonTextColor(colorBackground)
 	c.state.Pages.AddPage("dialog", modal, true, true)
+	c.state.App.SetFocus(modal)
 }
-

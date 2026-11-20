@@ -10,7 +10,7 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-// JWTSecret is used to sign tokens 
+// JWTSecret is used to sign tokens
 var JWTSecret = []byte("your-secret-key-change-this-in-production")
 
 // Claims represents JWT claims
@@ -51,13 +51,13 @@ func GenerateToken(userID, username string) (string, error) {
 func ValidateToken(tokenString string) (*Claims, error) {
 	token, err := jwt.ParseWithClaims(tokenString, &Claims{}, func(token *jwt.Token) (interface{}, error) {
 		return JWTSecret, nil
-	})
+	}, jwt.WithValidMethods([]string{jwt.SigningMethodHS256.Alg()}))
 
 	if err != nil {
 		return nil, err
 	}
 
-	if claims, ok := token.Claims.(*Claims); ok && token.Valid {
+	if claims, ok := token.Claims.(*Claims); ok && token.Valid && claims.UserID != "" && claims.Username != "" && claims.ExpiresAt != nil {
 		return claims, nil
 	}
 
@@ -66,7 +66,7 @@ func ValidateToken(tokenString string) (*Claims, error) {
 
 // GenerateID generates a random unique ID
 func GenerateID(prefix string) string {
-	
+
 	bytes := make([]byte, 8)
 	rand.Read(bytes)
 	return prefix + "_" + hex.EncodeToString(bytes)

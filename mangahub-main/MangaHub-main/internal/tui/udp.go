@@ -39,7 +39,7 @@ func (w *UDPWorker) Start() {
 			case <-stopChan:
 				return
 			default:
-				if w.state.UserID == "" {
+				if w.state.userID() == "" {
 					time.Sleep(1 * time.Second)
 					continue
 				}
@@ -65,23 +65,29 @@ func (w *UDPWorker) Stop() {
 	w.running = false
 	close(w.stop)
 	if w.conn != nil {
+		// Unregister the same source socket before closing it. Closing a UDP
+		// socket alone does not tell the server that a subscriber has left.
+		if server, err := net.ResolveUDPAddr("udp", w.state.UDPAddr); err == nil {
+			_ = w.conn.SetWriteDeadline(time.Now().Add(250 * time.Millisecond))
+			_, _ = w.conn.WriteToUDP([]byte("{\"type\":\"unsubscribe\"}\n"), server)
+		}
 		_ = w.conn.Close()
 		w.conn = nil
 	}
 	w.mu.Unlock()
-	w.state.UDPSubscribed = false
+	w.state.setConnection("udp", false)
 }
 
 func (w *UDPWorker) listenAndSubscribe(stopChan chan struct{}) {
 	serverAddr, err := net.ResolveUDPAddr("udp", w.state.UDPAddr)
 	if err != nil {
-		w.state.UDPSubscribed = false
+		w.state.setConnection("udp", false)
 		return
 	}
 
 	conn, err := net.ListenUDP("udp", nil)
 	if err != nil {
-		w.state.UDPSubscribed = false
+		w.state.setConnection("udp", false)
 		return
 	}
 
@@ -109,11 +115,11 @@ func (w *UDPWorker) listenAndSubscribe(stopChan chan struct{}) {
 	subMsg := []byte("{\"type\":\"subscribe\"}\n")
 	_, err = conn.WriteToUDP(subMsg, serverAddr)
 	if err != nil {
-		w.state.UDPSubscribed = false
+		w.state.setConnection("udp", false)
 		return
 	}
 
-	w.state.UDPSubscribed = true
+	w.state.setConnection("udp", true)
 	w.state.SetStatus("[green]UDP alerts subscribed (port 9091)[white]")
 
 	// Periodic keepalive to prevent backend timeout
@@ -161,5 +167,5 @@ func (w *UDPWorker) listenAndSubscribe(stopChan chan struct{}) {
 		}
 	}
 
-	w.state.UDPSubscribed = false
+	w.state.setConnection("udp", false)
 }

@@ -39,6 +39,9 @@ func Run() error {
 	tcp := NewTCPWorker(state)
 	udp := NewUDPWorker(state)
 	chat := NewChatClient(state)
+	defer tcp.Stop()
+	defer udp.Stop()
+	defer chat.Close()
 
 	controller := NewUIController(state, api, tcp, udp, chat)
 	rootLayout := controller.SetupLayout()

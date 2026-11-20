@@ -2,6 +2,7 @@ package main
 
 import (
 	"log"
+	"mangahub/internal/auth"
 
 	"mangahub/internal/config"
 	"mangahub/internal/database"
@@ -22,6 +23,7 @@ var (
 
 func main() {
 	cfg := config.Load()
+	auth.JWTSecret = []byte(cfg.JWTSecret)
 
 	// 1. Initialize SQLite Database for Users & User Library
 	if err := database.Initialize(cfg.BackendDBPath); err != nil {

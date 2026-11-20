@@ -14,6 +14,7 @@ type Config struct {
 	BackendDBPath   string
 	CatalogDBPath   string
 	JWTSecret       string
+	AdminAPIKey     string
 }
 
 // Load returns configuration populated from environment variables with fallback defaults
@@ -27,6 +28,7 @@ func Load() *Config {
 		BackendDBPath:   getEnv("BACKEND_DB_PATH", "./data/mangahub.db"),
 		CatalogDBPath:   getEnv("CATALOG_DB_PATH", "./data/catalog.db"),
 		JWTSecret:       getEnv("JWT_SECRET", "mangahub_secret_jwt_key_2026"),
+		AdminAPIKey:     os.Getenv("ADMIN_API_KEY"),
 	}
 }
 

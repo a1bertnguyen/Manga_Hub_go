@@ -31,6 +31,9 @@ func Initialize(dbPath string) error {
 	if err != nil {
 		return err
 	}
+	// SQLite has one writer. Serialize writes instead of failing concurrent
+	// progress requests with SQLITE_BUSY; RETURNING still assigns unique versions.
+	DB.SetMaxOpenConns(1)
 
 	// Test connection
 	if err = DB.Ping(); err != nil {
@@ -174,4 +177,3 @@ func Close() error {
 	}
 	return nil
 }
-

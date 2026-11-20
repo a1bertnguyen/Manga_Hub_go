@@ -13,20 +13,18 @@ import (
 var upgrader = gorilla.Upgrader{
 	ReadBufferSize:  1024,
 	WriteBufferSize: 1024,
-	CheckOrigin: func(r *http.Request) bool {
-		return true
-	},
 }
 
 // handleWebSocketUpgrade upgrades HTTP connection to WebSocket and assigns client to discussion room
 func handleWebSocketUpgrade(c *gin.Context) {
-	username := c.Query("username")
+	username := c.GetString("username")
+	if c.GetString("user_id") == "" || username == "" {
+		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Authentication required"})
+		return
+	}
 	room := c.Query("room")
 	if room == "" {
 		room = "general"
-	}
-	if username == "" {
-		username = "anonymous"
 	}
 
 	conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
@@ -47,4 +45,3 @@ func handleWebSocketUpgrade(c *gin.Context) {
 	go client.WritePump()
 	client.ReadPump()
 }
-
