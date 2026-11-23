@@ -1,54 +1,60 @@
 package websocket
 
 import (
+	"context"
 	"encoding/json"
 	"sync"
 	"time"
 
-	"github.com/gorilla/websocket" 
+	"github.com/gorilla/websocket"
 )
 
 // Message represents a chat or system message sent over WebSocket
 type Message struct {
-	ID       string `json:"id,omitempty"` // Echoed to confirm delivery through the Hub.
-	Type     string `json:"type"`              // Message type: chat, system, etc.
-	Username string `json:"username"`          // Sender username
-	Text     string `json:"text"`              // Message content
-	Time     string `json:"time"`              // Display time (HH:MM)
-	Room     string `json:"room,omitempty"`    // Chat room (optional in JSON)
+	UserID    string `json:"-"`
+	CreatedAt string `json:"created_at,omitempty"`
+	ID        string `json:"id,omitempty"`   // Echoed to confirm delivery through the Hub.
+	Type      string `json:"type"`           // Message type: chat, system, etc.
+	Username  string `json:"username"`       // Sender username
+	Text      string `json:"text"`           // Message content
+	Time      string `json:"time"`           // Display time (HH:MM)
+	Room      string `json:"room,omitempty"` // Chat room (optional in JSON)
 }
 
 // Client represents a single WebSocket connection
 type Client struct {
-	Hub      *Hub              // Reference to the central hub
-	Conn     *websocket.Conn   // WebSocket connection
-	Send     chan []byte       // Outgoing message channel
-	Username string            // Client username
-	Room     string            // Room the client joined
+	Registered chan struct{}
+	UserID     string
+	Hub        *Hub            // Reference to the central hub
+	Conn       *websocket.Conn // WebSocket connection
+	Send       chan []byte     // Outgoing message channel
+	Username   string          // Client username
+	Room       string          // Room the client joined
 }
 
 // Hub manages all WebSocket clients and rooms
 type Hub struct {
-	clients    map[*Client]bool              // All connected clients
-	rooms      map[string]map[*Client]bool   // Room → clients mapping
-	Broadcast  chan []byte                   // Messages to broadcast
-	Register   chan *Client                  // New client registration
-	Unregister chan *Client                  // Client disconnection
-	mu         sync.RWMutex                  // Protects clients & rooms
+	store      MessageStore
+	clients    map[*Client]bool            // All connected clients
+	rooms      map[string]map[*Client]bool // Room → clients mapping
+	Broadcast  chan []byte                 // Messages to broadcast
+	Register   chan *Client                // New client registration
+	Unregister chan *Client                // Client disconnection
+	mu         sync.RWMutex                // Protects clients & rooms
 
-	messageHistory []Message                 // Last 50 messages (all rooms)
-	historyMu      sync.RWMutex              // Protects message history
+	messageHistory []Message    // Last 50 messages (all rooms)
+	historyMu      sync.RWMutex // Protects message history
 }
 
 // Creates and initializes a new Hub instance
 func NewHub() *Hub {
 	return &Hub{
-		clients:    make(map[*Client]bool),          // Initialize client map
-		rooms:      make(map[string]map[*Client]bool), // Initialize rooms
-		Broadcast:  make(chan []byte, 256),           // Buffered broadcast channel
-		Register:   make(chan *Client),               // Register channel
-		Unregister: make(chan *Client),               // Unregister channel
-		messageHistory: make([]Message, 0, 50),       // Pre-allocate history
+		clients:        make(map[*Client]bool),            // Initialize client map
+		rooms:          make(map[string]map[*Client]bool), // Initialize rooms
+		Broadcast:      make(chan []byte, 256),            // Buffered broadcast channel
+		Register:       make(chan *Client),                // Register channel
+		Unregister:     make(chan *Client),                // Unregister channel
+		messageHistory: make([]Message, 0, 50),            // Pre-allocate history
 	}
 }
 
@@ -59,6 +65,22 @@ func (h *Hub) Run() {
 
 		// Handle new client connection
 		case client := <-h.Register:
+			if h.store != nil {
+				ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+				history, err := h.store.Recent(ctx, client.Room, 50)
+				cancel()
+				var frame []byte
+				if err != nil {
+					frame, _ = json.Marshal(Message{Type: "error", Room: client.Room, Text: "Could not load discussion history"})
+				} else {
+					frame, _ = json.Marshal(struct {
+						Type     string    `json:"type"`
+						Room     string    `json:"room"`
+						Messages []Message `json:"messages"`
+					}{"history", client.Room, history})
+				}
+				client.Send <- frame // Queued before membership and subsequent live events.
+			}
 			h.mu.Lock()
 			h.clients[client] = true
 
@@ -70,6 +92,9 @@ func (h *Hub) Run() {
 			// Add client to room
 			h.rooms[client.Room][client] = true
 			h.mu.Unlock()
+			if client.Registered != nil {
+				close(client.Registered)
+			}
 
 		// Handle client disconnection
 		case client := <-h.Unregister:

@@ -140,7 +140,12 @@ def run():
             header = b""
             while not header.endswith(b"\r\n\r\n"):
                 header += exact(sock, 1)
-            return sock, int(header.split(b" ")[1])
+            status = int(header.split(b" ")[1])
+            if status == 101:
+                history = ws_receive(sock)
+                if history.get("type") != "history" or history.get("room") != room:
+                    raise RuntimeError("Expected a room-scoped history frame before live chat")
+            return sock, status
 
         try:
             start("catalog")

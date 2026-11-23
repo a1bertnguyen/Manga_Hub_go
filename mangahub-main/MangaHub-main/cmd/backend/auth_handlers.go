@@ -21,14 +21,20 @@ func registerHandler(c *gin.Context) {
 	}
 
 	var exists int
-	database.DB.QueryRow("SELECT COUNT(*) FROM users WHERE username = ?", req.Username).Scan(&exists)
+	if err := database.DB.QueryRowContext(c.Request.Context(), "SELECT COUNT(*) FROM users WHERE username = ?", req.Username).Scan(&exists); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Database unavailable"})
+		return
+	}
 	if exists > 0 {
 		c.JSON(http.StatusConflict, gin.H{"error": "Username already exists"})
 		return
 	}
 
 	var emailExists int
-	database.DB.QueryRow("SELECT COUNT(*) FROM users WHERE email = ?", req.Email).Scan(&emailExists)
+	if err := database.DB.QueryRowContext(c.Request.Context(), "SELECT COUNT(*) FROM users WHERE email = ?", req.Email).Scan(&emailExists); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Database unavailable"})
+		return
+	}
 	if emailExists > 0 {
 		c.JSON(http.StatusConflict, gin.H{"error": "Email already registered"})
 		return
@@ -93,4 +99,3 @@ func loginHandler(c *gin.Context) {
 
 	c.JSON(http.StatusOK, models.LoginResponse{Token: token, Username: user.Username, UserID: user.ID})
 }
-

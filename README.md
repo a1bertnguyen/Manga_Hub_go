@@ -75,10 +75,11 @@ The verifier uses temporary ports, accounts, databases and credentials; it start
 
 The canonical programs are cmd/catalog, cmd/backend and cmd/tui. Older standalone protocol commands and browser assets are legacy demos, not the required application entry points. The browser chat demo does not implement the authenticated TUI workflow. Use the TUI for the assessed system.
 
-UDP is best effort. Chat, subscriber registries and alert feeds are in memory. Progress uses last committed write semantics with increasing versions, not optimistic conflict rejection. Refresh the library after an offline period. This classroom setup has no TLS and is not a remote production deployment. Do not submit real tokens, private keys or personal database files.
+Discussion messages persist in backend SQLite and the latest 50 messages per room are replayed on joining. Room/subscriber registries and alert feeds remain in memory; UDP is best effort. Progress uses last committed write semantics with increasing versions, not optimistic conflict rejection. Refresh the library after an offline period. This classroom setup has no TLS and is not a remote production deployment. Do not submit real tokens, private keys or personal database files.
 
 ## Evidence and guides
 
+- [Database audit, persistence and local data findings](mangahub-main/MangaHub-main/docs/DATABASE_REVIEW.md)
 - [F01-F06 acceptance review and source-session regression](mangahub-main/MangaHub-main/docs/FEATURE_ACCEPTANCE_REVIEW.md)
 - [Technical report](mangahub-main/MangaHub-main/REPORT.pdf)
 - [Grade A readiness review](mangahub-main/MangaHub-main/docs/GRADE_A_REVIEW.md)

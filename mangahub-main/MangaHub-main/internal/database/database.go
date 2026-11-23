@@ -26,32 +26,42 @@ func Initialize(dbPath string) error {
 		}
 	}
 
-	var err error
-	DB, err = sql.Open("sqlite", dbPath)
+	db, err := sql.Open("sqlite", dbPath)
 	if err != nil {
 		return err
 	}
+	ready := false
+	defer func() {
+		if !ready {
+			_ = db.Close()
+		}
+	}()
 	// SQLite has one writer. Serialize writes instead of failing concurrent
 	// progress requests with SQLITE_BUSY; RETURNING still assigns unique versions.
-	DB.SetMaxOpenConns(1)
+	db.SetMaxOpenConns(1)
 
 	// Test connection
-	if err = DB.Ping(); err != nil {
+	if err = db.Ping(); err != nil {
+		return err
+	}
+	if _, err = db.Exec("PRAGMA busy_timeout = 3000"); err != nil {
 		return err
 	}
 
 	log.Printf("Database connected successfully: %s", dbPath)
 
 	// Create tables
-	if err = createTables(); err != nil {
+	if err = createTables(db); err != nil {
 		return err
 	}
+	DB = db
+	ready = true
 
 	return nil
 }
 
 // createTables creates all required database tables
-func createTables() error {
+func createTables(db *sql.DB) error {
 	queries := []string{
 		`CREATE TABLE IF NOT EXISTS users (
 			id TEXT PRIMARY KEY,
@@ -80,16 +90,35 @@ func createTables() error {
 			FOREIGN KEY (user_id) REFERENCES users(id),
 			FOREIGN KEY (manga_id) REFERENCES manga(id)
 		)`,
+		`CREATE TABLE IF NOT EXISTS chat_messages (
+			sequence INTEGER PRIMARY KEY AUTOINCREMENT,
+			id TEXT NOT NULL UNIQUE,
+			user_id TEXT NOT NULL,
+			username TEXT NOT NULL,
+			room TEXT NOT NULL,
+			text TEXT NOT NULL,
+			created_at TEXT NOT NULL,
+			FOREIGN KEY (user_id) REFERENCES users(id)
+		)`,
+		`CREATE INDEX IF NOT EXISTS chat_messages_room_sequence ON chat_messages(room, sequence)`,
 	}
 
 	for _, query := range queries {
-		if _, err := DB.Exec(query); err != nil {
+		if _, err := db.Exec(query); err != nil {
 			return err
 		}
 	}
 
-	// Attempt migration if version column doesn't exist in existing user_progress table
-	_, _ = DB.Exec(`ALTER TABLE user_progress ADD COLUMN version INTEGER NOT NULL DEFAULT 1`)
+	// Migrate old databases without swallowing errors unrelated to duplicate columns.
+	var hasVersion int
+	if err := db.QueryRow(`SELECT COUNT(*) FROM pragma_table_info('user_progress') WHERE name = 'version'`).Scan(&hasVersion); err != nil {
+		return err
+	}
+	if hasVersion == 0 {
+		if _, err := db.Exec(`ALTER TABLE user_progress ADD COLUMN version INTEGER NOT NULL DEFAULT 1`); err != nil {
+			return err
+		}
+	}
 
 	log.Println("Database tables initialized successfully!")
 	return nil

@@ -34,11 +34,13 @@ func handleWebSocketUpgrade(c *gin.Context) {
 	}
 
 	client := &wsHub.Client{
-		Hub:      globalWSHub,
-		Conn:     conn,
-		Send:     make(chan []byte, 256),
-		Username: username,
-		Room:     room,
+		Registered: make(chan struct{}),
+		UserID:     c.GetString("user_id"),
+		Hub:        globalWSHub,
+		Conn:       conn,
+		Send:       make(chan []byte, 256),
+		Username:   username,
+		Room:       room,
 	}
 
 	globalWSHub.Register <- client

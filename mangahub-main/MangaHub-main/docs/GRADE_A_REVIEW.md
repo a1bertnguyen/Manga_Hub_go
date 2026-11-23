@@ -55,6 +55,6 @@ The member IDs are ITITWE23049 and ITITIU22130. The contribution split remains m
 
 ## Limits
 
-Redis is optional under v3.0 and is not implemented. UDP is best effort. Chat and protocol registries are in memory. SQLite uses one connection to serialize writes. Progress is last committed write with monotonically increasing versions, not conflict rejection. Socket credentials are checked on connection, not revalidated continuously. Use an isolated classroom setup; remote deployment needs TLS and proper secret management.
+Redis is optional under v3.0 and is not implemented. UDP is best effort. Protocol registries and alert feeds are in memory; Discussion messages now persist in backend SQLite and replay the latest 50 per room. See [the database review](DATABASE_REVIEW.md) for restart evidence and the two existing local progress rows with missing relationships. SQLite uses one connection to serialize writes. Progress is last committed write with monotonically increasing versions, not conflict rejection. Socket credentials are checked on connection, not revalidated continuously. Use an isolated classroom setup; remote deployment needs TLS and proper secret management.
 
 GitNexus impact calls were made before changes to existing symbols. Its upstream walks remained UNKNOWN/partial, so context references and direct source callers supplemented them. The combined TUI and backend change is broad and is treated as high regression risk. Final detect_changes and the test suites check the expected scope. No commit was created automatically.

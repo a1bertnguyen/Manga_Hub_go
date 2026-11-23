@@ -19,6 +19,7 @@ import time
 
 from verify_connected import ROOT, MODULE, free_port
 from verify_progress_sessions import verify_progress_sessions
+from verify_database_roundtrip import verify_database_roundtrip
 
 DOCS = MODULE / "docs"
 
@@ -176,6 +177,13 @@ def run():
                 raise
             summary["acceptance_checks"].append(result)
             print("F03 source-session exclusion: PASS")
+            try:
+                result = verify_database_roundtrip(http_port, temp / "backend.db", temp / "catalog.db", state, env, stop, start, ready)
+            except Exception as error:
+                summary["acceptance_checks"].append({"name": "Database roundtrip and restart", "passed": False, "observed": str(error)})
+                raise
+            summary["acceptance_checks"].append(result)
+            print("Database roundtrip and restart: PASS")
         finally:
             for name in list(processes):
                 stop(name)

@@ -1,0 +1,30 @@
+{
+  "mode": "read-only",
+  "backend_path": "C:\\Users\\QUANGMINH\\Desktop\\mangahub-main\\mangahub-main\\MangaHub-main\\data\\mangahub.db",
+  "catalog_path": "C:\\Users\\QUANGMINH\\Desktop\\mangahub-main\\mangahub-main\\MangaHub-main\\data\\catalog.db",
+  "warnings": [
+    "foreign_key_violations: 2",
+    "progress_without_user: 1",
+    "progress_missing_from_authoritative_catalog: 1"
+  ],
+  "backend_integrity": "ok",
+  "catalog_integrity": "ok",
+  "backend_table_counts": {
+    "users": 12,
+    "manga": 34,
+    "user_progress": 8,
+    "chat_messages": 0
+  },
+  "catalog_manga_count": 54,
+  "foreign_key_violations": 2,
+  "progress_without_user": 1,
+  "progress_missing_from_authoritative_catalog": 1,
+  "progress_orphan_rows": 2,
+  "progress_outside_chapter_bounds": 0,
+  "progress_unknown_status": 0,
+  "non_bcrypt_password_rows": 0,
+  "catalog_negative_chapters": 0,
+  "chat_schema_ready": true,
+  "chat_without_user": 0,
+  "clean": false
+}

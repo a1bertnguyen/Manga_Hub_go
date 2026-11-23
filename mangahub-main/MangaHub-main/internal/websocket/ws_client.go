@@ -1,7 +1,10 @@
 package websocket
 
 import (
+	"context"
+	"crypto/rand"
 	"encoding/json"
+	"strings"
 	"time"
 
 	"mangahub/pkg/models"
@@ -22,6 +25,9 @@ func (c *Client) ReadPump() {
 		c.Hub.Unregister <- c // Remove client
 		c.Conn.Close()
 	}()
+	if c.Registered != nil {
+		<-c.Registered // Replay snapshot and room membership precede incoming writes.
+	}
 
 	c.Conn.SetReadLimit(maxMessageSize)              // Limit size of incoming messages
 	c.Conn.SetReadDeadline(time.Now().Add(pongWait)) // Set initial read deadline (connection timeout)
@@ -41,11 +47,32 @@ func (c *Client) ReadPump() {
 		if err := json.Unmarshal(data, &msg); err != nil {
 			continue
 		}
+		if msg.Type != "chat" || strings.TrimSpace(msg.Text) == "" {
+			continue
+		}
 
 		// Set server-side fields
 		msg.Username = c.Username
-		msg.Time = time.Now().Format("15:04")
+		msg.UserID = c.UserID
+		now := time.Now()
+		msg.Time = now.Format("15:04")
+		msg.CreatedAt = now.UTC().Format(time.RFC3339Nano)
 		msg.Room = c.Room
+		if msg.ID == "" {
+			msg.ID = rand.Text()
+		}
+		if c.Hub.store != nil {
+			ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+			err := c.Hub.store.Save(ctx, msg)
+			cancel()
+			if err != nil {
+				failure, _ := json.Marshal(Message{ID: msg.ID, Type: "error", Room: c.Room, Text: "Message could not be saved; text kept for retry"})
+				if !c.Hub.sendToClient(c, failure) {
+					return
+				}
+				continue // No broadcast or successful echo on a failed SQLite write.
+			}
+		}
 
 		// Re-marshal the message with updated fields
 		messageData, err := json.Marshal(msg)

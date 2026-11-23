@@ -50,7 +50,7 @@ func main() {
 	go udp.StartUDPListener(":" + cfg.UDPPort)
 
 	// 5. Start WebSocket Discussion Hub
-	globalWSHub = wsHub.NewHub()
+	globalWSHub = wsHub.NewPersistentHub(wsHub.NewSQLiteMessageStore(database.DB))
 	go globalWSHub.Run()
 
 	// 6. Initialize Gin Engine (HTTP REST + WebSocket on HTTPPort)

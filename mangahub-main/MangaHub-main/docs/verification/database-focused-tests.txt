@@ -1,0 +1,3 @@
+ok  	mangahub/internal/database	2.257s
+ok  	mangahub/internal/websocket	3.094s
+ok  	mangahub/internal/tui	15.071s

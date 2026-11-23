@@ -28,6 +28,16 @@ type pendingChat struct {
 	result chan error
 }
 
+type receivedChat struct {
+	ID       string         `json:"id"`
+	Type     string         `json:"type"`
+	Username string         `json:"username"`
+	Text     string         `json:"text"`
+	Time     string         `json:"time"`
+	Room     string         `json:"room"`
+	Messages []receivedChat `json:"messages"`
+}
+
 func NewChatClient(state *AppState) *ChatClient {
 	return &ChatClient{
 		state:   state,
@@ -74,27 +84,30 @@ func (c *ChatClient) Connect(room string) error {
 	c.state.setConnection("ws", true)
 	c.state.SetStatus(fmt.Sprintf("[green]Connected to chat room #%s[white]", room))
 
-	// Clear previous chat view and display room header
-	if c.state.ChatMessagesView != nil {
-		// Do not wait for the event loop while holding c.mu: logout and shutdown
-		// call Close from that loop and need the same mutex.
-		go func() {
+	// Mount an empty room view before reading replay/live frames. Do not wait
+	// for the event loop while holding c.mu: logout calls Close on that loop.
+	go func() {
+		current := true
+		if c.state.ChatMessagesView != nil {
 			c.state.App.QueueUpdateDraw(func() {
 				c.mu.Lock()
-				current := c.conn == conn
+				current = c.conn == conn
 				c.mu.Unlock()
 				if current {
+					c.state.ChatMessagesView.Clear()
 					c.state.ChatMessagesView.SetTitle(" #" + tview.Escape(room) + " ")
 				}
 			})
-		}()
-	}
-
-	go c.readPump(conn, room)
+		}
+		if current {
+			c.readPump(conn, room)
+		}
+	}()
 	return nil
 }
 
 func (c *ChatClient) readPump(conn *websocket.Conn, room string) {
+	seen := make(map[string]bool)
 	disconnectError := fmt.Errorf("chat disconnected before server confirmed the message")
 	defer func() {
 		c.mu.Lock()
@@ -118,52 +131,66 @@ func (c *ChatClient) readPump(conn *websocket.Conn, room string) {
 			break
 		}
 
-		var chatMsg struct {
-			ID       string `json:"id"`
-			Type     string `json:"type"`
-			Username string `json:"username"`
-			Text     string `json:"text"`
-			Time     string `json:"time"`
-			Room     string `json:"room"`
-		}
-
-		if err := json.Unmarshal(message, &chatMsg); err != nil {
+		var frame receivedChat
+		if err := json.Unmarshal(message, &frame); err != nil {
 			continue
 		}
-		if chatMsg.Room != room {
+		if frame.Room != room {
 			continue
 		}
-
-		timestamp := chatMsg.Time
-		if timestamp == "" {
-			timestamp = time.Now().Format("15:04")
-		}
-
-		var formatted string
-		if chatMsg.Type == "system" {
-			formatted = fmt.Sprintf("[gray]%s * %s *[-]\n", tview.Escape("["+timestamp+"]"), tview.Escape(chatMsg.Text))
-		} else {
-			authorColor := "cyan"
-			if chatMsg.Username == c.state.username() {
-				authorColor = "green"
-			}
-			formatted = fmt.Sprintf("%s [%s]%s:[white] %s[-]\n", tview.Escape("["+timestamp+"]"), authorColor, tview.Escape(chatMsg.Username), tview.Escape(chatMsg.Text))
-		}
-
 		c.state.App.QueueUpdateDraw(func() {
 			c.mu.Lock()
 			defer c.mu.Unlock()
 			if c.conn != conn {
 				return // Ignore a queued frame from a room that has since been left.
 			}
-			if c.state.ChatMessagesView != nil {
-				c.state.ChatMessagesView.Write([]byte(formatted))
-				c.state.ChatMessagesView.ScrollToEnd()
+			if frame.Type == "error" {
+				if pending, ok := c.pending[frame.ID]; ok && pending.conn == conn {
+					delete(c.pending, frame.ID)
+					pending.result <- fmt.Errorf("%s", frame.Text)
+				} else {
+					c.state.SetStatus("[red]" + tview.Escape(frame.Text) + "[-]")
+				}
+				return
 			}
-			if chatMsg.Type == "chat" && chatMsg.Username == c.state.username() {
-				if pending, ok := c.pending[chatMsg.ID]; ok && pending.conn == conn {
-					delete(c.pending, chatMsg.ID)
-					pending.result <- nil
+			messages := []receivedChat{frame}
+			if frame.Type == "history" {
+				messages = frame.Messages
+			}
+			for _, chatMsg := range messages {
+				if chatMsg.Room != room || (chatMsg.Type != "chat" && chatMsg.Type != "system") {
+					continue
+				}
+				// A live echo still confirms delivery if a replay already rendered it.
+				if frame.Type != "history" && chatMsg.Type == "chat" && chatMsg.Username == c.state.username() {
+					if pending, ok := c.pending[chatMsg.ID]; ok && pending.conn == conn {
+						delete(c.pending, chatMsg.ID)
+						pending.result <- nil
+					}
+				}
+				if chatMsg.ID != "" && seen[chatMsg.ID] {
+					continue
+				}
+				if chatMsg.ID != "" {
+					seen[chatMsg.ID] = true
+				}
+				timestamp := chatMsg.Time
+				if timestamp == "" {
+					timestamp = time.Now().Format("15:04")
+				}
+				var formatted string
+				if chatMsg.Type == "system" {
+					formatted = fmt.Sprintf("[gray]%s * %s *[-]\n", tview.Escape("["+timestamp+"]"), tview.Escape(chatMsg.Text))
+				} else {
+					authorColor := "cyan"
+					if chatMsg.Username == c.state.username() {
+						authorColor = "green"
+					}
+					formatted = fmt.Sprintf("%s [%s]%s:[white] %s[-]\n", tview.Escape("["+timestamp+"]"), authorColor, tview.Escape(chatMsg.Username), tview.Escape(chatMsg.Text))
+				}
+				if c.state.ChatMessagesView != nil {
+					_, _ = c.state.ChatMessagesView.Write([]byte(formatted))
+					c.state.ChatMessagesView.ScrollToEnd()
 				}
 			}
 		})

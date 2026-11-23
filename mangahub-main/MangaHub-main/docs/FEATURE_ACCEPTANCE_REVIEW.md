@@ -45,7 +45,7 @@ The verifier builds real services, runs the exact importable Postman collection 
 | Restart recovery | 4 | 7 | 0 |
 | Total | 57 | 113 | 0 |
 
-All five supplementary acceptance checks pass: the live feature TUI test, the unavailable UDP receiver case, the catalog-outage TUI test, persisted password-hash verification, and source-session exclusion. The evidence file's `known_deviations` list is empty. The socket regression uses actual services rather than mocked network delivery.
+All six supplementary acceptance checks pass: the live feature TUI test, the unavailable UDP receiver case, the catalog-outage TUI test, persisted password-hash verification, source-session exclusion, and the database roundtrip/restart review. The last review contains 15 checks, including committed chat readback and a real TUI rendering stored history after both processes restart. The evidence file's `known_deviations` list is empty. Existing local data warnings are recorded separately in [the database review](DATABASE_REVIEW.md); passing disposable-data tests does not erase those findings.
 
 - [Sanitized Newman results and live TUI test output](verification/postman-feature-acceptance.json)
 - [Earlier connected-protocol verification](verification/connected-review-2026-11-20.json)
