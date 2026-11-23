@@ -1,0 +1,65 @@
+=== RUN   TestDiscussionMessageVisibleOnBothScreens
+=== RUN   TestDiscussionMessageVisibleOnBothScreens/120x38
+=== RUN   TestDiscussionMessageVisibleOnBothScreens/80x24
+--- PASS: TestDiscussionMessageVisibleOnBothScreens (1.15s)
+    --- PASS: TestDiscussionMessageVisibleOnBothScreens/120x38 (0.75s)
+    --- PASS: TestDiscussionMessageVisibleOnBothScreens/80x24 (0.40s)
+=== RUN   TestDiscussionDisplaysLiteralMarkup
+--- PASS: TestDiscussionDisplaysLiteralMarkup (0.21s)
+=== RUN   TestDiscussionUnicodeMessageDoesNotDisappear
+--- PASS: TestDiscussionUnicodeMessageDoesNotDisappear (0.19s)
+=== RUN   TestDiscussionKeepsInputUntilServerEcho
+--- PASS: TestDiscussionKeepsInputUntilServerEcho (0.54s)
+=== RUN   TestDiscussionOversizeRetainsTextAndConnection
+--- PASS: TestDiscussionOversizeRetainsTextAndConnection (0.53s)
+=== RUN   TestDiscussionDisconnectReportsFailure
+--- PASS: TestDiscussionDisconnectReportsFailure (0.48s)
+=== RUN   TestDiscussionLegacyFrameStillDecodes
+--- PASS: TestDiscussionLegacyFrameStillDecodes (0.00s)
+=== RUN   TestDiscussionNoEchoRetainsInputAndStaysInteractive
+--- PASS: TestDiscussionNoEchoRetainsInputAndStaysInteractive (5.52s)
+=== RUN   TestLiveFeatureAcceptanceTUI
+    feature_acceptance_test.go:78: run python scripts/verify_postman.py
+--- SKIP: TestLiveFeatureAcceptanceTUI (0.00s)
+=== RUN   TestLiveCatalogUnavailableTUI
+    feature_acceptance_test.go:315: run python scripts/verify_postman.py
+--- SKIP: TestLiveCatalogUnavailableTUI (0.00s)
+=== RUN   TestLiveConnectedTUI
+    live_integration_test.go:20: run python scripts/verify_connected.py --with-tui
+--- SKIP: TestLiveConnectedTUI (0.00s)
+=== RUN   TestAPIProgressUsesTCPSession
+--- PASS: TestAPIProgressUsesTCPSession (0.00s)
+=== RUN   TestRedesignFocusAndTextInput
+--- PASS: TestRedesignFocusAndTextInput (0.06s)
+=== RUN   TestRedesignCatalogHTTPContract
+--- PASS: TestRedesignCatalogHTTPContract (0.00s)
+=== RUN   TestRedesignIgnoresStaleMangaDetails
+--- PASS: TestRedesignIgnoresStaleMangaDetails (1.06s)
+=== RUN   TestRedesignProgressDialogKeepsFocus
+--- PASS: TestRedesignProgressDialogKeepsFocus (0.04s)
+=== RUN   TestRedesignUDPStopUnsubscribes
+--- PASS: TestRedesignUDPStopUnsubscribes (0.00s)
+=== RUN   TestRedesignChatConnectDoesNotWaitForEventLoop
+--- PASS: TestRedesignChatConnectDoesNotWaitForEventLoop (0.05s)
+=== RUN   TestRedesignScreens
+--- PASS: TestRedesignScreens (0.30s)
+=== RUN   TestRootDispatchAccountTyping
+--- PASS: TestRootDispatchAccountTyping (0.41s)
+=== RUN   TestRootMouseClickAndAccountSubmit
+--- PASS: TestRootMouseClickAndAccountSubmit (0.49s)
+=== RUN   TestRootProgressDialogInputAndPaste
+--- PASS: TestRootProgressDialogInputAndPaste (0.27s)
+=== RUN   TestRootSearchAndDiscussionTyping
+--- PASS: TestRootSearchAndDiscussionTyping (0.81s)
+=== RUN   TestSession_SaveLoadClear
+--- PASS: TestSession_SaveLoadClear (0.00s)
+=== RUN   TestUIController_SetupLayout
+--- PASS: TestUIController_SetupLayout (0.00s)
+PASS
+ok  	mangahub/internal/tui	13.660s
+=== RUN   TestWebSocketHub_RoomIsolation
+--- PASS: TestWebSocketHub_RoomIsolation (0.35s)
+=== RUN   TestWebSocketHub_HistoryAndDisconnect
+--- PASS: TestWebSocketHub_HistoryAndDisconnect (0.13s)
+PASS
+ok  	mangahub/internal/websocket	1.970s

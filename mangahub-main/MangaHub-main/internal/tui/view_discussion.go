@@ -45,7 +45,8 @@ func (c *UIController) buildDiscussionView() tview.Primitive {
 	// Send message handler
 	msgInput.SetDoneFunc(func(key tcell.Key) {
 		if key == tcell.KeyEnter {
-			text := strings.TrimSpace(msgInput.GetText())
+			draft := msgInput.GetText()
+			text := strings.TrimSpace(draft)
 			if text == "" {
 				return
 			}
@@ -54,14 +55,16 @@ func (c *UIController) buildDiscussionView() tview.Primitive {
 				c.state.SetStatus("[red]Please login first (Press 0 or F10) to post messages[white]")
 				return
 			}
+			c.state.SetStatus("[yellow]Sending message; waiting for server confirmation...[-]")
 
 			go func() {
 				err := c.chat.SendMessage(text)
 				c.state.App.QueueUpdateDraw(func() {
 					if err != nil {
 						c.state.SetStatus(fmt.Sprintf("[red]Chat send error: %s[-]", tview.Escape(err.Error())))
-					} else if msgInput.GetText() == text {
+					} else if msgInput.GetText() == draft {
 						msgInput.SetText("")
+						c.state.SetStatus("[green]Message received back from the discussion server.[-]")
 					}
 				})
 			}()

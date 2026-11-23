@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"time"
 
+	"mangahub/pkg/models"
+
 	"github.com/gorilla/websocket"
 )
 
@@ -11,17 +13,17 @@ const (
 	writeWait      = 10 * time.Second
 	pongWait       = 60 * time.Second
 	pingPeriod     = 54 * time.Second
-	maxMessageSize = 512
+	maxMessageSize = models.MaxChatFrameBytes
 )
 
 // ReadPump reads messages from the WebSocket client
 func (c *Client) ReadPump() {
 	defer func() {
-		c.Hub.Unregister <- c  // Remove client
+		c.Hub.Unregister <- c // Remove client
 		c.Conn.Close()
 	}()
 
-	c.Conn.SetReadLimit(maxMessageSize) // Limit size of incoming messages 
+	c.Conn.SetReadLimit(maxMessageSize)              // Limit size of incoming messages
 	c.Conn.SetReadDeadline(time.Now().Add(pongWait)) // Set initial read deadline (connection timeout)
 	// Reset read deadline every time a pong is received
 	c.Conn.SetPongHandler(func(string) error {

@@ -47,6 +47,14 @@ Enter or `a` opens the add-to-library dialog. In Library, Enter edits chapter/st
 
 Discussion opens at the message field. Tab moves to rooms, then conversation history, then back to the message. Select a room with the arrow keys and Enter. Enter sends a non-empty message asynchronously. If a send fails, the message remains available for retry.
 
+Discussion delivery was strengthened on 23 November 2026. The earlier server limit of 512 bytes could close the socket on a Vietnamese paragraph while the client had already cleared the input. Both sides now use a 16 KiB encoded-frame limit; an oversized message is rejected locally without losing the text or disconnecting. Username, text and timestamps are escaped before tview rendering, so strings such as `[red]` are displayed literally. Queued frames from a connection that has been replaced are ignored.
+
+Every TUI message carries a random ID echoed by the server through its room Hub. The client waits up to five seconds for that matching echo before clearing the input. A socket close or missing confirmation shows an error and retains the text. The echo confirms the server returned that message to the sending TUI; delivery to peers is checked separately in the connected tests. There is no automatic retry or durable chat replay.
+
+An HTTP 200 in Gin's log for `/ws` is not a per-message delivery receipt. The route hijacks the HTTP connection for WebSocket; actual chat frames travel over the socket afterward. Check the Conversation pane and the send feedback. Restart both backend and TUI after this protocol update; catalog can stay running.
+
+Run `go test -race ./internal/tui -run TestDiscussion -count=1 -v` from the module directory. These tests use the real WebSocket Hub and tcell event loop, including inspecting rendered screen cells on sender and peer at 120x38 and 80x24, literal formatting characters, Vietnamese messages, delayed/missing echo, oversized input and disconnection. See [the focused delivery tests](verification/discussion-delivery-tests.txt) and [the full race test output](verification/discussion-race-tests.txt).
+
 In Alerts, `s` subscribes, `u` unsubscribes, `c` clears the feed, and `t` triggers the protected demo release endpoint. Set the same private `ADMIN_API_KEY` in the backend and teacher/demo TUI shell; a logged-in account is also required. Empty configuration disables release. A demo release changes the catalog's chapter count; use a disposable demo database when demonstrating this action. UDP delivery is best effort.
 
 Connections shows the configured client addresses, backend/catalog health, and client connection flags. `r` refreshes it. The implemented identity checks and verification results are documented in [the grade readiness review](GRADE_A_REVIEW.md).

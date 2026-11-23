@@ -10,6 +10,7 @@ import (
 
 // Message represents a chat or system message sent over WebSocket
 type Message struct {
+	ID       string `json:"id,omitempty"` // Echoed to confirm delivery through the Hub.
 	Type     string `json:"type"`              // Message type: chat, system, etc.
 	Username string `json:"username"`          // Sender username
 	Text     string `json:"text"`              // Message content
