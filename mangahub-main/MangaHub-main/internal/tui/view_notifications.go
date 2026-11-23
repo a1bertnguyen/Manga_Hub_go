@@ -92,26 +92,23 @@ func (c *UIController) clearNotifications() {
 
 func (c *UIController) triggerDemoChapterRelease() {
 	mangaID := "one-piece"
-	title := "One Piece"
-	targetChapter := 1105
 
-	c.state.mu.RLock()
 	if len(c.state.MangaCatalog) > 0 {
-		m := c.state.MangaCatalog[0]
-		mangaID = m.ID
-		title = m.Title
-		targetChapter = int(m.TotalChapters) + 1
+		mangaID = c.state.MangaCatalog[0].ID
 	}
-	c.state.mu.RUnlock()
 
-	c.state.SetStatus(fmt.Sprintf("[yellow]Triggering demo release for %s (Ch. %d)...[white]", title, targetChapter))
-
+	c.state.SetStatus("[yellow]Checking the catalog before release...[white]")
 	go func() {
-		err := c.api.TriggerRelease(mangaID, targetChapter, title)
+		manga, err := c.api.GetMangaDetail(mangaID)
 		if err != nil {
-			c.state.SetStatus(fmt.Sprintf("[red]Release failed: %v[white]", err))
+			c.state.SetStatus(fmt.Sprintf("[red]Release failed: %s[white]", tview.Escape(err.Error())))
 			return
 		}
-		c.state.SetStatus("[green]Demo release sent! Waiting for UDP datagram on :9091...[white]")
+		message, err := c.api.TriggerRelease(mangaID, int(manga.TotalChapters)+1, manga.Title)
+		if err != nil {
+			c.state.SetStatus(fmt.Sprintf("[red]Release failed: %s[white]", tview.Escape(err.Error())))
+			return
+		}
+		c.state.SetStatus("[green]" + tview.Escape(message) + "[white]")
 	}()
 }

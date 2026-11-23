@@ -34,6 +34,9 @@ func main() {
 		log.Fatalf("[Catalog] Failed to open database (%s): %v", cfg.CatalogDBPath, err)
 	}
 	defer db.Close()
+	// SQLite serializes writes. Sharing one connection makes simultaneous
+	// release requests reach the conditional update in order.
+	db.SetMaxOpenConns(1)
 
 	if err := db.Ping(); err != nil {
 		log.Fatalf("[Catalog] Failed to ping database: %v", err)

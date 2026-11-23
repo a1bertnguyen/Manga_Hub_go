@@ -117,6 +117,11 @@
       "type": "string"
     },
     {
+      "key": "authorQuery",
+      "value": "",
+      "type": "string"
+    },
+    {
       "key": "genre",
       "value": "",
       "type": "string"
@@ -583,6 +588,7 @@
                   "            if (list.length >= 2) {",
                   "              const m=list[0]; save(\"mangaId\",m.id); save(\"otherMangaId\",list[1].id);",
                   "              save(\"mangaTitle\",m.title); save(\"searchQuery\",m.title.split(\" \")[0]);",
+                  "              save(\"authorQuery\",encodeURIComponent(m.author));",
                   "              save(\"genre\",m.genres[0]); save(\"totalChapters\",Number(m.total_chapters||0));",
                   "              save(\"overflowChapter\",Number(m.total_chapters||0)+1);",
                   "            }",
@@ -615,6 +621,35 @@
                   "(() => {",
                   "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
                   "pm.test(\"Catalog response\", () => { const d=pm.response.json(); pm.expect(d.manga).to.be.an(\"array\"); pm.expect(d.count).to.eql(d.manga.length); });pm.test(\"Selected title found\", () => pm.expect(pm.response.json().manga.some(m=>m.id===pm.variables.get(\"mangaId\"))).to.eql(true));",
+                  "})();"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Search by author",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/manga?q={{authorQuery}}",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "(() => {",
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Catalog response\", () => { const d=pm.response.json(); pm.expect(d.manga).to.be.an(\"array\"); pm.expect(d.count).to.eql(d.manga.length); });pm.test(\"Selected author found\", () => pm.expect(pm.response.json().manga.some(m=>m.id===pm.variables.get(\"mangaId\"))).to.eql(true));",
                   "})();"
                 ]
               }
@@ -1129,6 +1164,90 @@
             "body": {
               "mode": "raw",
               "raw": "{\n  \"current_chapter\": -1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "(() => {",
+                  "pm.test(\"HTTP 400\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"Structured error\", () => pm.expect(pm.response.json().error).to.be.a(\"string\").and.not.empty);",
+                  "})();"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Reject missing chapter",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/library/{{mangaId}}/progress",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "(() => {",
+                  "pm.test(\"HTTP 400\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"Structured error\", () => pm.expect(pm.response.json().error).to.be.a(\"string\").and.not.empty);",
+                  "})();"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Reject null chapter",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/library/{{mangaId}}/progress",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"current_chapter\": null\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -1841,6 +1960,127 @@
           "response": []
         },
         {
+          "name": "Reject the same chapter twice",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Admin-Key",
+                "value": "{{adminKey}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/admin/manga/{{mangaId}}/release",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\"chapter\":{{newChapter}}}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "(() => {",
+                  "pm.test(\"HTTP 409\", () => pm.response.to.have.status(409));",
+                  "pm.test(\"Structured error\", () => pm.expect(pm.response.json().error).to.be.a(\"string\").and.not.empty);",
+                  "})();"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Reject release below the current total",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Admin-Key",
+                "value": "{{adminKey}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/admin/manga/{{mangaId}}/release",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"chapter\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "(() => {",
+                  "pm.test(\"HTTP 409\", () => pm.response.to.have.status(409));",
+                  "pm.test(\"Structured error\", () => pm.expect(pm.response.json().error).to.be.a(\"string\").and.not.empty);",
+                  "})();"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Rejected releases preserve the catalog count",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/manga/{{mangaId}}",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "(() => {",
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Count unchanged\",()=>pm.expect(pm.response.json().total_chapters).to.eql(Number(pm.variables.get(\"newChapter\"))));",
+                  "})();"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
           "name": "Reject overflowing release chapter",
           "request": {
             "method": "POST",
@@ -2091,6 +2331,48 @@
                   "  pm.expect(item.current_chapter).to.eql(Number(pm.variables.get(\"expectedChapter\")));",
                   "  pm.expect(item.version).to.eql(Number(pm.variables.get(\"lastVersion\")));",
                   "});",
+                  "})();"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Legacy route rejects null chapter",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/users/progress",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"manga_id\": \"{{mangaId}}\",\n  \"current_chapter\": null\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "(() => {",
+                  "pm.test(\"HTTP 400\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"Structured error\", () => pm.expect(pm.response.json().error).to.be.a(\"string\").and.not.empty);",
                   "})();"
                 ]
               }

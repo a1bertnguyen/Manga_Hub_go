@@ -11,42 +11,42 @@
           "failed": 0
         },
         "items": {
-          "total": 57,
+          "total": 64,
           "pending": 0,
           "failed": 0
         },
         "scripts": {
-          "total": 63,
+          "total": 70,
           "pending": 0,
           "failed": 0
         },
         "prerequests": {
-          "total": 57,
+          "total": 64,
           "pending": 0,
           "failed": 0
         },
         "requests": {
-          "total": 41,
+          "total": 45,
           "pending": 0,
           "failed": 0
         },
         "tests": {
-          "total": 41,
+          "total": 45,
           "pending": 0,
           "failed": 0
         },
         "assertions": {
-          "total": 82,
+          "total": 91,
           "pending": 0,
           "failed": 0
         },
         "testScripts": {
-          "total": 41,
+          "total": 45,
           "pending": 0,
           "failed": 0
         },
         "prerequestScripts": {
-          "total": 22,
+          "total": 25,
           "pending": 0,
           "failed": 0
         }
@@ -91,6 +91,10 @@
         },
         {
           "name": "Search by title",
+          "status": 200
+        },
+        {
+          "name": "Search by author",
           "status": 200
         },
         {
@@ -143,6 +147,14 @@
         },
         {
           "name": "Reject negative chapter",
+          "status": 400
+        },
+        {
+          "name": "Reject missing chapter",
+          "status": 400
+        },
+        {
+          "name": "Reject null chapter",
           "status": 400
         },
         {
@@ -210,6 +222,10 @@
           "status": 200
         },
         {
+          "name": "Legacy route rejects null chapter",
+          "status": 400
+        },
+        {
           "name": "Legacy progress update",
           "status": 200
         },
@@ -229,42 +245,42 @@
           "failed": 0
         },
         "items": {
-          "total": 6,
+          "total": 9,
           "pending": 0,
           "failed": 0
         },
         "scripts": {
-          "total": 12,
+          "total": 18,
           "pending": 0,
           "failed": 0
         },
         "prerequests": {
-          "total": 6,
+          "total": 9,
           "pending": 0,
           "failed": 0
         },
         "requests": {
-          "total": 6,
+          "total": 9,
           "pending": 0,
           "failed": 0
         },
         "tests": {
-          "total": 6,
+          "total": 9,
           "pending": 0,
           "failed": 0
         },
         "assertions": {
-          "total": 11,
+          "total": 17,
           "pending": 0,
           "failed": 0
         },
         "testScripts": {
-          "total": 6,
+          "total": 9,
           "pending": 0,
           "failed": 0
         },
         "prerequestScripts": {
-          "total": 6,
+          "total": 9,
           "pending": 0,
           "failed": 0
         }
@@ -286,6 +302,18 @@
         {
           "name": "Reject invalid release chapter",
           "status": 400
+        },
+        {
+          "name": "Reject the same chapter twice",
+          "status": 409
+        },
+        {
+          "name": "Reject release below the current total",
+          "status": 409
+        },
+        {
+          "name": "Rejected releases preserve the catalog count",
+          "status": 200
         },
         {
           "name": "Reject overflowing release chapter",
@@ -450,17 +478,17 @@
     {
       "name": "TestLiveFeatureAcceptanceTUI",
       "passed": true,
-      "observed": "=== RUN   TestLiveFeatureAcceptanceTUI\n2026/11/23 20:08:44 [TUI TCP] Disconnected from 127.0.0.1:64618\n    feature_acceptance_test.go:112: F01 PASS: actual Register/Login/Logout buttons and wrong-password feedback through the running TUI\n    feature_acceptance_test.go:147: F02 PASS: title search, selected metadata (all six fields), and visible no-result state over real HTTP -> gRPC\n    feature_acceptance_test.go:229: F03 PASS: add dialog, all three statuses, progress edit, peer redraw without refresh, different-account isolation, invalid chapter error and unchanged stored version\n    feature_acceptance_test.go:259: F04 PASS: user-triggered release and unsubscribe keys; notifications rendered in two TUIs, unsubscribed peer receives no second alert\n    feature_acceptance_test.go:309: F05 PASS: actual room selection and send input, bidirectional rendered chat, room isolation, peer disconnect and responsive navigation\n2026/11/23 20:08:48 [TUI TCP] Disconnected from 127.0.0.1:64618\n2026/11/23 20:08:48 [TUI TCP] Disconnected from 127.0.0.1:64618\n2026/11/23 20:08:48 [TUI TCP] Disconnected from 127.0.0.1:64618\n--- PASS: TestLiveFeatureAcceptanceTUI (5.68s)\nPASS\nok  \tmangahub/internal/tui\t7.340s\n"
+      "observed": "=== RUN   TestLiveFeatureAcceptanceTUI\n2026/11/23 21:31:15 [TUI TCP] Disconnected from 127.0.0.1:65216\n    feature_acceptance_test.go:112: F01 PASS: actual Register/Login/Logout buttons and wrong-password feedback through the running TUI\n    feature_acceptance_test.go:147: F02 PASS: title search, selected metadata (all six fields), and visible no-result state over real HTTP -> gRPC\n    feature_acceptance_test.go:229: F03 PASS: add dialog, all three statuses, progress edit, peer redraw without refresh, different-account isolation, invalid chapter error and unchanged stored version\n    feature_acceptance_test.go:259: F04 PASS: user-triggered release and unsubscribe keys; notifications rendered in two TUIs, unsubscribed peer receives no second alert\n    feature_acceptance_test.go:309: F05 PASS: actual room selection and send input, bidirectional rendered chat, room isolation, peer disconnect and responsive navigation\n2026/11/23 21:31:19 [TUI TCP] Disconnected from 127.0.0.1:65216\n2026/11/23 21:31:19 [TUI TCP] Disconnected from 127.0.0.1:65216\n2026/11/23 21:31:19 [TUI TCP] Disconnected from 127.0.0.1:65216\n--- PASS: TestLiveFeatureAcceptanceTUI (5.60s)\nPASS\nok  \tmangahub/internal/tui\t7.239s\n"
     },
     {
-      "name": "Unavailable UDP receiver",
+      "name": "Concurrent release and unavailable UDP receiver",
       "passed": true,
-      "observed": "Subscriber socket closed without unsubscribe; surviving subscriber received new_chapter; backend health responded 200"
+      "observed": "Concurrent requests for one chapter returned 200 and 409. The surviving subscriber received one event. The count increased once and HTTP health stayed up."
     },
     {
       "name": "TestLiveCatalogUnavailableTUI",
       "passed": true,
-      "observed": "=== RUN   TestLiveCatalogUnavailableTUI\n    feature_acceptance_test.go:326: F02/F06 PASS: stopped real catalog -> visible HTTP 503 in TUI, keyboard navigation stays responsive\n--- PASS: TestLiveCatalogUnavailableTUI (0.13s)\nPASS\nok  \tmangahub/internal/tui\t1.775s\n"
+      "observed": "=== RUN   TestLiveCatalogUnavailableTUI\n    feature_acceptance_test.go:326: F02/F06 PASS: stopped real catalog -> visible HTTP 503 in TUI, keyboard navigation stays responsive\n--- PASS: TestLiveCatalogUnavailableTUI (0.21s)\nPASS\nok  \tmangahub/internal/tui\t1.854s\n"
     },
     {
       "name": "SQLite password hash survives restart",
@@ -537,7 +565,12 @@
           "passed": true
         }
       ],
-      "observed": "=== RUN   TestLiveDiscussionHistoryTUI\n--- PASS: TestLiveDiscussionHistoryTUI (0.14s)\nPASS\nok  \tmangahub/internal/tui\t1.813s\n"
+      "observed": "=== RUN   TestLiveDiscussionHistoryTUI\n--- PASS: TestLiveDiscussionHistoryTUI (0.14s)\nPASS\nok  \tmangahub/internal/tui\t1.775s\n"
+    },
+    {
+      "name": "Occupied UDP port leaves HTTP and catalog working",
+      "passed": true,
+      "observed": "HTTP health exposed unavailable UDP. The release saved without claiming UDP delivery."
     }
   ],
   "known_deviations": [],

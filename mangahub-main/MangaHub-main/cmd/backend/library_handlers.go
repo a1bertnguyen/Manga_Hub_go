@@ -116,7 +116,7 @@ func getLibraryHandler(c *gin.Context) {
 }
 
 type UpdateProgressReq struct {
-	CurrentChapter int    `json:"current_chapter" binding:"gte=0"`
+	CurrentChapter *int   `json:"current_chapter" binding:"required,gte=0"`
 	Status         string `json:"status"`
 }
 
@@ -128,21 +128,21 @@ func updateProgressHandler(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	executeProgressUpdate(c, mangaID, req.CurrentChapter, req.Status)
+	executeProgressUpdate(c, mangaID, *req.CurrentChapter, req.Status)
 }
 
 // updateProgressLegacyHandler handles backwards-compatible PUT /users/progress
 func updateProgressLegacyHandler(c *gin.Context) {
 	var req struct {
 		MangaID        string `json:"manga_id" binding:"required"`
-		CurrentChapter int    `json:"current_chapter" binding:"gte=0"`
+		CurrentChapter *int   `json:"current_chapter" binding:"required,gte=0"`
 		Status         string `json:"status"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	executeProgressUpdate(c, req.MangaID, req.CurrentChapter, req.Status)
+	executeProgressUpdate(c, req.MangaID, *req.CurrentChapter, req.Status)
 }
 
 // executeProgressUpdate carries out progress update, validation against max chapters, and TCP broadcast

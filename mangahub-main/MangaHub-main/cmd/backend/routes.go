@@ -10,6 +10,7 @@ import (
 
 	"mangahub/internal/auth"
 	"mangahub/internal/config"
+	"mangahub/internal/udp"
 	pb "mangahub/proto"
 
 	"github.com/gin-contrib/cors"
@@ -31,13 +32,17 @@ func healthHandler(cfg *config.Config) gin.HandlerFunc {
 			}
 		}
 
+		udpStatus := "unavailable"
+		if udp.IsListening() {
+			udpStatus = "running (:" + cfg.UDPPort + ")"
+		}
 		c.JSON(http.StatusOK, gin.H{
 			"status":    "healthy",
 			"timestamp": time.Now().Unix(),
 			"services": gin.H{
 				"http":         "running (:" + cfg.HTTPPort + ")",
 				"tcp":          "running (:" + cfg.TCPPort + ")",
-				"udp":          "running (:" + cfg.UDPPort + ")",
+				"udp":          udpStatus,
 				"websocket":    "/ws",
 				"grpc_catalog": catalogStatus,
 			},

@@ -33,16 +33,14 @@ Both configured files were opened read-only for inspection. Neither password has
 |---|---|
 | Backend/catalog `PRAGMA quick_check` | Both `ok` |
 | Backend accounts | 12; all password rows have a bcrypt prefix |
-| Backend progress rows | 8 |
+| Backend progress rows | 6 active, 2 archived |
 | Authoritative catalog rows | 54 |
 | Progress outside known chapter bounds / unknown statuses | 0 / 0 |
-| Legacy missing user reference | 1 progress row |
-| Missing authoritative catalog reference | 1 progress row |
-| Distinct progress rows with either missing relationship | 2 |
-| SQLite `foreign_key_check` findings | 2 relationship violations in existing progress data |
-| Chat table after migration | Present, 0 rows until messages are sent with the updated backend |
+| Active progress rows with a missing user or catalog reference | 0 |
+| SQLite `foreign_key_check` findings | 0 |
+| Chat table | 1 persisted message at the time of the audit |
 
-The existing progress relationship findings are not SQLite file corruption. They are legacy data issues and remain reported; no owner was invented and no row was deleted or reassigned. The legacy schema declares relationships, but connection-wide FK enforcement is not enabled. Catalog existence is validated through gRPC because the authoritative catalog is in another database. New persisted chat inserts verify the author in the backend database.
+The two legacy progress rows had missing relationships. A transaction copied both rows and the reason for each move to `user_progress_archive` before removing them from the active library. The six active entries passed the relationship check afterward. The original rows also remain in the local SQLite backup at `data/backups/before-progress-repair-20261123-212934.db`. Catalog existence is validated through gRPC because its data is in a separate database. Chat writes verify the author in backend SQLite.
 
 Before upgrading the real backend file, a consistent SQLite backup was created at `data/backups/before-chat-20261123-200444.db` (ignored by Git). The updated backend then ran the migration on the configured local file. Full before/after comparisons confirmed that existing `users`, legacy `manga` and `user_progress` rows were unchanged; the new chat table was added and integrity remained `ok`.
 
@@ -61,7 +59,7 @@ python scripts/verify_postman.py
 python scripts/verify_connected.py --with-tui
 ```
 
-The collection still passes 57 HTTP requests and 113 assertions. The new database roundtrip section contains 15 passing checks: integrity and relationships in disposable databases, bcrypt storage, same-room chat delivery, exact committed chat row/author readback, room isolation, gRPC chapter write/readback, both-service restart, account login, unchanged progress/version, catalog count persistence, exactly-once history replay in the inspected result, and a real TUI displaying the stored history after restart. This is not a guarantee of globally exactly-once network delivery.
+The collection passes 64 HTTP requests and 128 assertions. The database roundtrip includes 15 checks across SQLite integrity, bcrypt storage, same-room delivery, chat row readback, room isolation, chapter updates, process restart, account login, progress persistence and history replay in the TUI.
 
 Store/unit tests additionally cover the last-50 replay limit without deleting older rows, old-schema migration without data loss, unknown author rejection, SQLite read-only failure without a successful echo, retained TUI draft, and controlled HTTP 500 errors when the database is closed. Full Go race tests and vet pass.
 

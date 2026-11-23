@@ -243,8 +243,9 @@ func TestBackend_ChapterValidationAndProgress(t *testing.T) {
 	}
 
 	// 1. Grade A Requirement: Chapter > Total Chapters MUST be rejected with HTTP 400 Bad Request
+	aboveTotal := 30
 	progBadBody, _ := json.Marshal(UpdateProgressReq{
-		CurrentChapter: 30, // Exceeds 25!
+		CurrentChapter: &aboveTotal,
 		Status:         "reading",
 	})
 	wBadProg := httptest.NewRecorder()
@@ -258,8 +259,9 @@ func TestBackend_ChapterValidationAndProgress(t *testing.T) {
 	}
 
 	// 2. Chapter <= Total Chapters MUST succeed with HTTP 200 OK
+	validChapter := 20
 	progGoodBody, _ := json.Marshal(UpdateProgressReq{
-		CurrentChapter: 20, // Valid (<= 25)
+		CurrentChapter: &validChapter,
 		Status:         "reading",
 	})
 	wGoodProg := httptest.NewRecorder()

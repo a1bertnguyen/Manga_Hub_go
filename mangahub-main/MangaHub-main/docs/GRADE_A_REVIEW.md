@@ -2,7 +2,7 @@
 
 Updated 20 November 2026 against the student specification v3.0.
 
-**Acceptance update:** the [F01-F06 review](FEATURE_ACCEPTANCE_REVIEW.md) now records all six features passing the checked criteria. The earlier F03 source-session mismatch is fixed: the TUI supplies its server-issued TCP session identifier on HTTP progress writes, and the Hub excludes that source. Real socket tests cover both routes, account isolation, invalid/stale identifiers and reconnect; Newman passes 57 requests and 113 assertions alongside live TUI tests.
+The TUI supplies its server-issued TCP session identifier on progress writes, and the Hub excludes that source. Real socket tests cover both routes, account isolation, invalid and stale identifiers, and reconnect. Newman passes 64 requests and 128 assertions alongside live TUI tests. [F01-F06 review](FEATURE_ACCEPTANCE_REVIEW.md)
 
 The three reproduced blockers from the earlier 9/12 connected review have been fixed. The expanded verifier now passes **19/19 checks**, including three real tview clients using tcell simulation screens against separate backend/catalog processes. The Go suite, full race suite and go vet pass. This establishes technical readiness evidence for the A criteria; the instructor still evaluates both members during the live demonstration.
 

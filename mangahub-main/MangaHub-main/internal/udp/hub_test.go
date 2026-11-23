@@ -67,9 +67,9 @@ func TestUDPNetwork_SubscribeAndReceive(t *testing.T) {
 	defer serverConn.Close()
 
 	serverAddr := serverConn.LocalAddr().(*net.UDPAddr)
-	udpConn = serverConn // wire into package global
+	udpConn.Store(serverConn)
 	go GlobalHub.Run()
-	go readPump()
+	go readPump(serverConn)
 
 	// Create client socket
 	clientConn, err := net.DialUDP("udp", nil, serverAddr)
@@ -134,4 +134,3 @@ func TestUDPNetwork_SubscribeAndReceive(t *testing.T) {
 		t.Errorf("Expected unsubscribed response, got: %s", string(buf[:n]))
 	}
 }
-

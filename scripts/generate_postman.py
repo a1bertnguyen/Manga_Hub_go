@@ -103,11 +103,13 @@ def build():
             if (list.length >= 2) {
               const m=list[0]; save("mangaId",m.id); save("otherMangaId",list[1].id);
               save("mangaTitle",m.title); save("searchQuery",m.title.split(" ")[0]);
+              save("authorQuery",encodeURIComponent(m.author));
               save("genre",m.genres[0]); save("totalChapters",Number(m.total_chapters||0));
               save("overflowChapter",Number(m.total_chapters||0)+1);
             }
         '''),
         request("Search by title", "GET", "/api/manga?q={{searchQuery}}", tests=catalogue_test+'pm.test("Selected title found", () => pm.expect(pm.response.json().manga.some(m=>m.id===pm.variables.get("mangaId"))).to.eql(true));'),
+        request("Search by author", "GET", "/api/manga?q={{authorQuery}}", tests=catalogue_test+'pm.test("Selected author found", () => pm.expect(pm.response.json().manga.some(m=>m.id===pm.variables.get("mangaId"))).to.eql(true));'),
         request("Filter by genre", "GET", "/api/manga?genre={{genre}}", tests=catalogue_test+'pm.test("Genre filter applied", () => { pm.expect(pm.response.json().count).to.be.above(0); pm.response.json().manga.forEach(m=>pm.expect(m.genres.join(",").toLowerCase()).to.include(String(pm.variables.get("genre")).toLowerCase())); });'),
         request("No search results", "GET", "/api/manga?q=__postman_no_matching_title_72819__", tests='pm.test("No matches", () => {const d=pm.response.json(); pm.expect(d.count).to.eql(0); pm.expect(d.manga || []).to.eql([]);});'),
         request("Details through Gin to gRPC", "GET", "/api/manga/{{mangaId}}", tests='pm.test("All required detail fields", () => { const d=pm.response.json(); ["id","title","author","genres","status","total_chapters","description"].forEach(k=>pm.expect(d).to.have.property(k)); pm.expect(d.id).to.eql(pm.variables.get("mangaId")); });'),
@@ -127,6 +129,8 @@ def build():
         request("Mark completed at total chapters", "PUT", progress, body='{"current_chapter":{{targetChapter}},"status":"completed"}', pre=STORE+'save("targetChapter",Number(pm.variables.get("totalChapters")));', tests=SAVE_PROGRESS),
         request("Verify stored chapter and version", "GET", "/api/library", tests=LIBRARY_CHECK),
         request("Reject negative chapter", "PUT", progress, 400, body={"current_chapter":-1}),
+        request("Reject missing chapter", "PUT", progress, 400, body={}),
+        request("Reject null chapter", "PUT", progress, 400, body={"current_chapter":None}),
         request("Reject chapter above total", "PUT", progress, 400, body='{"current_chapter":{{overflowChapter}}}'),
         request("Reject int32 overflow input", "PUT", progress, 400, body={"current_chapter":4294967296}),
         request("Reject unknown reading status", "PUT", progress, 400, body={"current_chapter":0,"status":"invented"}),
@@ -150,6 +154,9 @@ def build():
         request("Publish one real chapter and broadcast UDP", "POST", admin, body='{"chapter":{{newChapter}}}', headers={"X-Admin-Key":"{{adminKey}}"}, tests='pm.test("Catalog update acknowledged",()=>pm.expect(pm.response.json().total_chapters).to.eql(Number(pm.variables.get("newChapter"))));', description="Changes catalog data. Open subscribed TUI clients to observe the actual UDP notification."),
         request("Verify changed catalog count", "GET", "/api/manga/{{mangaId}}", tests=STORE+'pm.test("New total persisted",()=>pm.expect(pm.response.json().total_chapters).to.eql(Number(pm.variables.get("newChapter"))));save("totalChapters",pm.response.json().total_chapters);'),
         request("Reject invalid release chapter", "POST", admin, 400, body={"chapter":0}, headers={"X-Admin-Key":"{{adminKey}}"}),
+        request("Reject the same chapter twice", "POST", admin, 409, body='{"chapter":{{newChapter}}}', headers={"X-Admin-Key":"{{adminKey}}"}),
+        request("Reject release below the current total", "POST", admin, 409, body={"chapter":1}, headers={"X-Admin-Key":"{{adminKey}}"}),
+        request("Rejected releases preserve the catalog count", "GET", "/api/manga/{{mangaId}}", tests='pm.test("Count unchanged",()=>pm.expect(pm.response.json().total_chapters).to.eql(Number(pm.variables.get("newChapter"))));'),
         request("Reject overflowing release chapter", "POST", admin, 400, body={"chapter":4294967296}, headers={"X-Admin-Key":"{{adminKey}}"}),
         request("Unknown release manga", "POST", "/api/admin/manga/__postman_missing_id__/release", 404, body={"chapter":1}, headers={"X-Admin-Key":"{{adminKey}}"})
     ], "Default skipped. Set runAdminDemo=true and adminKey to the backend ADMIN_API_KEY. Uses a real release; use a disposable demo database.", flag="runAdminDemo"),
@@ -158,6 +165,7 @@ def build():
         request("Legacy catalog search", "GET", "/manga?q={{searchQuery}}", tests=catalogue_test),
         request("Legacy manga details", "GET", "/manga/{{mangaId}}"),
         request("Legacy library", "GET", "/users/library", tests=LIBRARY_CHECK),
+        request("Legacy route rejects null chapter", "PUT", "/users/progress", 400, body={"manga_id":"{{mangaId}}","current_chapter":None}),
         request("Legacy progress update", "PUT", "/users/progress", body='{"manga_id":"{{mangaId}}","current_chapter":{{targetChapter}},"status":"reading"}', pre=STORE+'save("targetChapter",Math.min(5,Number(pm.variables.get("totalChapters"))));', tests=SAVE_PROGRESS),
         request("Verify legacy update through current route", "GET", "/api/library", tests=LIBRARY_CHECK)
     ]),
@@ -176,7 +184,7 @@ def build():
         request("Details available again", "GET", "/api/manga/{{mangaId}}")
     ], "Restart backend/catalog with the same database paths and JWT_SECRET. Set runRecoveryChecks=true and run only this folder.", flag="runRecoveryChecks")]
     defaults={"baseUrl":"http://localhost:8080","wsUrl":"ws://localhost:8080/ws","grpcAddress":"localhost:9092","tcpAddress":"localhost:9090","udpAddress":"localhost:9091","adminKey":"","runAdminDemo":"false","runFaultChecks":"false","runRecoveryChecks":"false","wsRoom":"general"}
-    runtime=["token","userId","username","testUsername","testEmail","password","mangaId","otherMangaId","mangaTitle","searchQuery","genre","totalChapters","overflowChapter","targetChapter","expectedChapter","lastVersion","newChapter","bobToken","bobUserId","bobUsername","bobEmail","bobPassword"]
+    runtime=["token","userId","username","testUsername","testEmail","password","mangaId","otherMangaId","mangaTitle","searchQuery","authorQuery","genre","totalChapters","overflowChapter","targetChapter","expectedChapter","lastVersion","newChapter","bobToken","bobUserId","bobUsername","bobEmail","bobPassword"]
     values=dict(defaults,**{key:"" for key in runtime})
     collection={"info":{"_postman_id":"d8f4b3e1-9c2a-4f10-8a7e-5b3c1d2e4f60","name":"MangaHub - F01-F06 Acceptance API","schema":"https://schema.getpostman.com/json/collection/v2.1.0/collection.json","description":"Run folders 01-05 and 07 in order with both services running. Fresh demo users, JWT and real manga IDs are saved automatically. Admin release, catalog outage and restart folders are opt-in. HTTP assertions are not proof of TCP/UDP/TUI delivery. See POSTMAN_GUIDE.md for live TUI, WebSocket and gRPC checks."},"auth":{"type":"bearer","bearer":[{"key":"token","value":"{{token}}","type":"string"}]},"variable":[{"key":key,"value":value,"type":"string"} for key,value in values.items()],"item":items}
     secrets={"token","bobToken","password","bobPassword","adminKey"}

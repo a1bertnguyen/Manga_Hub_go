@@ -98,7 +98,7 @@ func TestLiveConnectedTUI(t *testing.T) {
 		waitFor("UDP subscription", c, func() bool { return c.state.connected("udp") })
 	}
 	total, _ := strconv.Atoi(os.Getenv("MANGAHUB_LIVE_TOTAL"))
-	if err := a.api.TriggerRelease(id, total+2, "Live TUI verification"); err != nil {
+	if _, err := a.api.TriggerRelease(id, total+2, "Live TUI verification"); err != nil {
 		t.Fatal(err)
 	}
 	for _, c := range []*UIController{a, b} {
@@ -107,7 +107,7 @@ func TestLiveConnectedTUI(t *testing.T) {
 	b.udp.Stop()
 	before := 0
 	uiDo(t, b, func() { b.state.mu.RLock(); before = len(b.state.NotificationList); b.state.mu.RUnlock() })
-	if err := a.api.TriggerRelease(id, total+3, "Subscribed only"); err != nil {
+	if _, err := a.api.TriggerRelease(id, total+3, "Subscribed only"); err != nil {
 		t.Fatal(err)
 	}
 	waitFor("second UDP alert", a, func() bool { return strings.Contains(a.state.NotifView.GetText(true), "Subscribed only") })

@@ -6,6 +6,7 @@ credentials and databases are temporary. Retained output excludes tokens/bodies.
 from http.client import HTTPConnection
 from contextlib import closing
 import json
+from concurrent.futures import ThreadPoolExecutor
 import os
 from pathlib import Path
 import secrets
@@ -35,11 +36,12 @@ def run():
         for command in ("catalog", "backend"):
             subprocess.run(["go", "build", "-o", str(temp / (command + suffix)), "./cmd/" + command], cwd=MODULE, check=True)
         ports = []
-        while len(ports) < 4:
+        while len(ports) < 3:
             port = free_port()
             if port not in ports:
                 ports.append(port)
-        http_port, tcp_port, udp_port, grpc_port = ports
+        http_port, tcp_port, grpc_port = ports
+        udp_port = free_port(socket.SOCK_DGRAM)
         env = dict(os.environ, HTTP_PORT=str(http_port), TCP_PORT=str(tcp_port), UDP_PORT=str(udp_port), GRPC_PORT=str(grpc_port),
                    CATALOG_GRPC_ADDR=f"127.0.0.1:{grpc_port}", CATALOG_DB_PATH=str(temp / "catalog.db"),
                    BACKEND_DB_PATH=str(temp / "backend.db"), JWT_SECRET=secrets.token_hex(32), ADMIN_API_KEY=secrets.token_hex(32))
@@ -147,13 +149,26 @@ def run():
                     sock.settimeout(3); sock.connect(("127.0.0.1", udp_port)); sock.send(b'{"type":"subscribe"}'); sock.recv(4096)
                 dead.close()
                 _, manga = http("/api/manga/" + state["mangaId"], token=state["token"])
-                code, _ = http("/api/admin/manga/" + state["mangaId"] + "/release", "POST", {"chapter": manga["total_chapters"] + 1}, state["token"], True)
+                release_path = "/api/admin/manga/" + state["mangaId"] + "/release"
+                chapter = manga["total_chapters"] + 1
+                with ThreadPoolExecutor(max_workers=2) as pool:
+                    attempts = [pool.submit(http, release_path, "POST", {"chapter": chapter}, state["token"], True) for _ in range(2)]
+                    codes = sorted(attempt.result()[0] for attempt in attempts)
                 alert = json.loads(healthy.recv(4096))
+                healthy.settimeout(0.3)
+                try:
+                    healthy.recv(4096)
+                    extra_alert = True
+                except socket.timeout:
+                    extra_alert = False
+                _, updated = http("/api/manga/" + state["mangaId"], token=state["token"])
                 health_code, _ = http("/api/health")
-                passed = code == 200 and health_code == 200 and alert.get("type") == "new_chapter"
-                summary["acceptance_checks"].append({"name": "Unavailable UDP receiver", "passed": passed, "observed": "Subscriber socket closed without unsubscribe; surviving subscriber received new_chapter; backend health responded 200"})
+                passed = (codes == [200, 409] and health_code == 200 and alert.get("type") == "new_chapter"
+                          and alert.get("chapter") == chapter and not extra_alert and updated.get("total_chapters") == chapter)
+                summary["acceptance_checks"].append({"name": "Concurrent release and unavailable UDP receiver",
+                    "passed": passed, "observed": "Concurrent requests for one chapter returned 200 and 409. The surviving subscriber received one event. The count increased once and HTTP health stayed up."})
                 if not passed:
-                    raise RuntimeError("Unavailable UDP receiver disrupted release")
+                    raise RuntimeError("Concurrent chapter release or UDP receiver handling failed")
             finally:
                 dead.close(); healthy.close()
 
@@ -184,6 +199,33 @@ def run():
                 raise
             summary["acceptance_checks"].append(result)
             print("Database roundtrip and restart: PASS")
+
+            # Simulate a Windows port conflict without touching personal data.
+            stop("backend")
+            family = socket.AF_INET6 if socket.has_ipv6 else socket.AF_INET
+            with socket.socket(family, socket.SOCK_DGRAM) as occupied:
+                if family == socket.AF_INET6:
+                    occupied.setsockopt(socket.IPPROTO_IPV6, socket.IPV6_V6ONLY, 0)
+                if os.name == "nt":
+                    occupied.setsockopt(socket.SOL_SOCKET, socket.SO_EXCLUSIVEADDRUSE, 1)
+                occupied.bind(("::" if family == socket.AF_INET6 else "0.0.0.0", udp_port))
+                start("backend")
+                ready()
+                code, health = http("/api/health")
+                detail_code, manga = http("/api/manga/" + state["mangaId"], token=state["token"])
+                expected = manga.get("total_chapters", 0) + 1
+                release_code, release = http("/api/admin/manga/" + state["mangaId"] + "/release", "POST",
+                                             {"chapter": expected}, state["token"], True)
+                read_code, updated = http("/api/manga/" + state["mangaId"], token=state["token"])
+                passed = (code == 200 and health["services"]["udp"] == "unavailable" and detail_code == 200
+                          and release_code == 200 and "unavailable" in release["message"].lower()
+                          and read_code == 200 and updated.get("total_chapters") == expected)
+                summary["acceptance_checks"].append({"name": "Occupied UDP port leaves HTTP and catalog working",
+                    "passed": passed, "observed": "HTTP health exposed unavailable UDP. The release saved without claiming UDP delivery."})
+                if not passed:
+                    raise RuntimeError(f"Occupied UDP port: health={code}, udp={health['services']['udp']}, "
+                                       f"detail={detail_code}, release={release_code}, readback={read_code}")
+                print("Occupied UDP port and degraded release: PASS")
         finally:
             for name in list(processes):
                 stop(name)

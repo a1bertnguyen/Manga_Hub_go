@@ -2,33 +2,40 @@ package udp
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"net"
 	"strings"
+	"sync/atomic"
 	"time"
 )
 
-var udpConn *net.UDPConn // Shared UDP connection used for sending and receiving packets
+var udpConn atomic.Pointer[net.UDPConn]
 
-func StartUDPListener(addr string) {
+func IsListening() bool { return udpConn.Load() != nil }
+
+func StartUDPListener(addr string) error {
 	udpAddr, err := net.ResolveUDPAddr("udp", addr)
 	if err != nil {
-		log.Fatalf("UDP resolve error: %v", err)
+		return fmt.Errorf("resolve UDP address: %w", err)
 	}
 
-	udpConn, err = net.ListenUDP("udp", udpAddr)
+	conn, err := net.ListenUDP("udp", udpAddr)
 	if err != nil {
-		log.Fatalf("UDP listen error: %v", err)
+		return fmt.Errorf("listen UDP: %w", err)
 	}
+	udpConn.Store(conn)
 	log.Printf("[UDP Listener] Server listening on %s", addr)
 
-	go readPump()
+	go readPump(conn)
+	return nil
 }
 
-func readPump() {
+func readPump(conn *net.UDPConn) {
+	defer udpConn.CompareAndSwap(conn, nil)
 	buffer := make([]byte, 4096)
 	for {
-		n, clientAddr, err := udpConn.ReadFromUDP(buffer)
+		n, clientAddr, err := conn.ReadFromUDP(buffer)
 		if err != nil {
 			if strings.Contains(err.Error(), "use of closed network connection") {
 				return
@@ -51,7 +58,7 @@ func readPump() {
 		if isUnsubscribe {
 			GlobalHub.Unregister <- &ClientAddr{Addr: clientAddr}
 			resp := []byte("{\"type\":\"unsubscribed\",\"status\":\"ok\"}\n")
-			_, _ = udpConn.WriteToUDP(resp, clientAddr)
+			_, _ = conn.WriteToUDP(resp, clientAddr)
 			log.Printf("[UDP Listener] Unsubscribed: %s", addrStr)
 			continue
 		}
@@ -63,11 +70,9 @@ func readPump() {
 			}
 			GlobalHub.Register <- client
 			resp := []byte("{\"type\":\"subscribed\",\"status\":\"ok\"}\n")
-			_, _ = udpConn.WriteToUDP(resp, clientAddr)
+			_, _ = conn.WriteToUDP(resp, clientAddr)
 			log.Printf("[UDP Listener] Subscribed: %s", addrStr)
 			continue
 		}
 	}
 }
-
-

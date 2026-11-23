@@ -39,13 +39,13 @@ The verifier builds real services, runs the exact importable Postman collection 
 
 | Newman phase | Actual requests | Assertions | Failures |
 |---|---:|---:|---:|
-| Default workflow | 41 | 82 | 0 |
-| Admin release | 6 | 11 | 0 |
+| Default workflow | 45 | 91 | 0 |
+| Admin release | 9 | 17 | 0 |
 | Catalog unavailable | 6 | 13 | 0 |
 | Restart recovery | 4 | 7 | 0 |
-| Total | 57 | 113 | 0 |
+| Total | 64 | 128 | 0 |
 
-All six supplementary acceptance checks pass: the live feature TUI test, the unavailable UDP receiver case, the catalog-outage TUI test, persisted password-hash verification, source-session exclusion, and the database roundtrip/restart review. The last review contains 15 checks, including committed chat readback and a real TUI rendering stored history after both processes restart. The evidence file's `known_deviations` list is empty. Existing local data warnings are recorded separately in [the database review](DATABASE_REVIEW.md); passing disposable-data tests does not erase those findings.
+The supplementary checks include concurrent duplicate release requests with a disconnected UDP receiver, a real backend started with its UDP port occupied, catalog outage behavior, source-session exclusion, and database roundtrip after restart. A matching chapter release returns one HTTP 200 and one 409 for two concurrent requests and a subscribed receiver gets one event. The database review verifies stored chat history on a real TUI. [Database review](DATABASE_REVIEW.md)
 
 - [Sanitized Newman results and live TUI test output](verification/postman-feature-acceptance.json)
 - [Earlier connected-protocol verification](verification/connected-review-2026-11-20.json)
