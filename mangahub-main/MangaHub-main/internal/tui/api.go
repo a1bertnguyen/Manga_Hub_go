@@ -169,11 +169,15 @@ func (c *APIClient) UpdateProgress(mangaID string, chapter int, status string) e
 }
 
 // TriggerRelease sends an admin request to release a new chapter (updating gRPC and triggering UDP broadcast)
-func (c *APIClient) TriggerRelease(mangaID string, newChapter int, title string) error {
-	return c.doRequest("POST", "/api/admin/manga/"+mangaID+"/release", map[string]interface{}{
+func (c *APIClient) TriggerRelease(mangaID string, newChapter int, title string) (string, error) {
+	var response struct {
+		Message string `json:"message"`
+	}
+	err := c.doRequest("POST", "/api/admin/manga/"+mangaID+"/release", map[string]interface{}{
 		"chapter": newChapter,
 		"title":   title,
-	}, nil)
+	}, &response)
+	return response.Message, err
 }
 
 // FetchHealth retrieves the live status of all integrated backend services

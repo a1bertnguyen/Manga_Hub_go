@@ -9,7 +9,7 @@ Select **MangaHub Local (demo)** as the active environment. Start `go run ./cmd/
 
 ## Normal collection run
 
-Run the collection in its saved order. It contains 57 requests in nine folders. Folders 01-05 and 07 form the ordinary workflow; the three manual folders are skipped by default. Each registration generates a new demo username, email and password, and successful authentication stores the JWT and identity automatically. Catalog requests select real manga IDs, so seed slugs are not hardcoded.
+Run the 64 requests in their saved order. Folders 01-05 and 07 form the ordinary workflow. The three manual folders are skipped by default. Each registration generates fresh demo credentials and successful authentication stores the JWT and identity. The catalog checks select real manga IDs. The collection checks author search, missing and null progress, and repeat and lower chapter releases.
 
 | Folder | What it checks |
 |---|---|

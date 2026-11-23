@@ -14,7 +14,9 @@ import (
 func main() {
 	go udp.GlobalHub.Run() // Start the global UDP hub
 
-	udp.StartUDPListener(":9091") // UDP listener on :9091
+	if err := udp.StartUDPListener(":9091"); err != nil {
+		log.Fatal(err)
+	}
 
 	router := gin.New()
 	router.POST("/internal/progress", receiveProgress)

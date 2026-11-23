@@ -47,7 +47,9 @@ func main() {
 
 	// 4. Start UDP Notification Hub & Listener
 	go udp.GlobalHub.Run()
-	go udp.StartUDPListener(":" + cfg.UDPPort)
+	if err := udp.StartUDPListener(":" + cfg.UDPPort); err != nil {
+		log.Printf("[Backend] UDP alerts unavailable: %v", err)
+	}
 
 	// 5. Start WebSocket Discussion Hub
 	globalWSHub = wsHub.NewPersistentHub(wsHub.NewSQLiteMessageStore(database.DB))
@@ -60,7 +62,9 @@ func main() {
 	log.Printf("🚀 MANGAHUB UNIFIED BACKEND RUNNING")
 	log.Printf("   HTTP REST & WS : http://localhost:%s", cfg.HTTPPort)
 	log.Printf("   TCP Sync Hub   : tcp://localhost:%s", cfg.TCPPort)
-	log.Printf("   UDP Notifier   : udp://localhost:%s", cfg.UDPPort)
+	if udp.IsListening() {
+		log.Printf("   UDP Notifier   : udp://localhost:%s", cfg.UDPPort)
+	}
 	log.Printf("   gRPC Catalog   : %s", cfg.CatalogGRPCAddr)
 	log.Printf("   Database       : %s", cfg.BackendDBPath)
 	log.Printf("==================================================")

@@ -134,6 +134,14 @@ func adminReleaseChapterHandler(c *gin.Context) {
 			c.JSON(http.StatusNotFound, gin.H{"error": "Manga not found in catalog"})
 			return
 		}
+		if st.Code() == codes.FailedPrecondition {
+			c.JSON(http.StatusConflict, gin.H{"error": st.Message()})
+			return
+		}
+		if st.Code() == codes.InvalidArgument {
+			c.JSON(http.StatusBadRequest, gin.H{"error": st.Message()})
+			return
+		}
 		if isCatalogUnavailable(err) {
 			c.JSON(http.StatusServiceUnavailable, gin.H{"error": "Catalog service unavailable: " + st.Message()})
 			return
@@ -153,13 +161,16 @@ func adminReleaseChapterHandler(c *gin.Context) {
 	}
 
 	// 3. Broadcast UDP event to all subscribed TUI clients
-	udp.GlobalHub.BroadcastChapterRelease(id, title, req.Chapter)
+	message := "New chapter released. UDP alerts are unavailable."
+	if udp.IsListening() {
+		udp.GlobalHub.BroadcastChapterRelease(id, title, int(resp.TotalChapters))
+		message = "New chapter released and UDP alert broadcasted"
+	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"message":        "New chapter released and UDP alert broadcasted",
+		"message":        message,
 		"manga_id":       id,
 		"title":          title,
 		"total_chapters": resp.TotalChapters,
 	})
 }
-

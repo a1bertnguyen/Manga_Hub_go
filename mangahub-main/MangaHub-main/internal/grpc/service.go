@@ -59,8 +59,9 @@ func (s *MangaServiceServer) SearchManga(ctx context.Context, req *pb.SearchMang
 	args := []interface{}{}
 
 	if req.Query != "" {
-		query += " AND title LIKE ?"
-		args = append(args, "%"+req.Query+"%")
+		query += " AND (title LIKE ? OR author LIKE ?)"
+		pattern := "%" + req.Query + "%"
+		args = append(args, pattern, pattern)
 	}
 
 	if req.Genre != "" {
@@ -83,7 +84,7 @@ func (s *MangaServiceServer) SearchManga(ctx context.Context, req *pb.SearchMang
 
 		err := rows.Scan(&manga.Id, &manga.Title, &manga.Author, &genresStr, &manga.Status, &manga.TotalChapters, &manga.Description)
 		if err != nil {
-			continue
+			return nil, status.Errorf(codes.Internal, "cannot read manga search result: %v", err)
 		}
 
 		if genresStr != "" {
@@ -91,6 +92,9 @@ func (s *MangaServiceServer) SearchManga(ctx context.Context, req *pb.SearchMang
 		}
 
 		mangas = append(mangas, &manga)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, status.Errorf(codes.Internal, "cannot finish manga search: %v", err)
 	}
 
 	return &pb.SearchMangaResponse{
@@ -152,28 +156,30 @@ func (s *MangaServiceServer) UpdateChapters(ctx context.Context, req *pb.UpdateC
 		return nil, status.Error(codes.InvalidArgument, "total_chapters must be non-negative")
 	}
 
-	var exists bool
-	err := s.db.QueryRowContext(ctx, "SELECT EXISTS(SELECT 1 FROM manga WHERE id = ?)", req.Id).Scan(&exists)
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, "database error: %v", err)
+	// Compare and update in one statement so simultaneous releases cannot lower
+	// the count or both succeed for the same chapter.
+	var total int32
+	err := s.db.QueryRowContext(ctx, `
+		UPDATE manga SET total_chapters = ?
+		WHERE id = ? AND total_chapters < ?
+		RETURNING total_chapters
+	`, req.TotalChapters, req.Id, req.TotalChapters).Scan(&total)
+	if err == sql.ErrNoRows {
+		err = s.db.QueryRowContext(ctx, "SELECT total_chapters FROM manga WHERE id = ?", req.Id).Scan(&total)
+		if err == sql.ErrNoRows {
+			return nil, status.Errorf(codes.NotFound, "manga not found: id=%s", req.Id)
+		}
+		if err == nil {
+			return nil, status.Errorf(codes.FailedPrecondition, "new chapter must exceed the current total (%d)", total)
+		}
 	}
-	if !exists {
-		return nil, status.Errorf(codes.NotFound, "manga not found: id=%s", req.Id)
-	}
-
-	res, err := s.db.ExecContext(ctx, "UPDATE manga SET total_chapters = ? WHERE id = ?", req.TotalChapters, req.Id)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to update chapters: %v", err)
-	}
-
-	rowsAffected, _ := res.RowsAffected()
-	if rowsAffected == 0 {
-		return nil, status.Errorf(codes.NotFound, "manga not found: id=%s", req.Id)
 	}
 
 	return &pb.UpdateChaptersResponse{
 		Success:       true,
 		Message:       "Chapters updated successfully",
-		TotalChapters: req.TotalChapters,
+		TotalChapters: total,
 	}, nil
 }

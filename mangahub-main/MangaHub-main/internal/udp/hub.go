@@ -66,12 +66,10 @@ func (h *Hub) Run() {
 		case message := <-h.broadcast:
 			h.mu.RLock()
 			for key, client := range h.clients {
-				if udpConn != nil {
-					_, err := udpConn.WriteToUDP(message, client.Addr)
+				if conn := udpConn.Load(); conn != nil {
+					_, err := conn.WriteToUDP(message, client.Addr)
 					if err != nil {
 						log.Printf("[UDP Hub] UDP send failed to %s: %v", key, err)
-					} else {
-						client.LastSeen = time.Now()
 					}
 				}
 			}

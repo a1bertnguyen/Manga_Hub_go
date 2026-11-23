@@ -2,14 +2,14 @@
 
 IT096IIU - Net-Centric Programming | International University, VNU-HCM
 
-Student specification v3.0 | 20 November 2026
+Student specification v3.0 | 23 November 2026
 
 | Team member ID | Contribution record |
 | --- | --- |
 | ITITWE23049 | To be confirmed by this member |
 | ITITIU22130 | To be confirmed by this member |
 
-Measured connected verification: 19/19 checks passed, including a three-TUI integration test under the Go race detector.
+The connected verifier passed 19/19 checks. The acceptance suite passed 64 HTTP requests, 128 assertions, and live TUI, socket and database checks.
 
 Implementation and verification are recorded below. Individual contribution allocation and the live ownership demonstration remain to be confirmed by the two members.
 
@@ -18,12 +18,12 @@ Implementation and verification are recorded below. Individual contribution allo
 
 MangaHub tracks metadata and reading progress. It does not host manga reading pages. Three independently launched Go programs separate the user interface, the Gin gateway and the catalog service.
 
-Architecture: TUI -- HTTP/TCP/UDP/WS --> Gin backend -- gRPC --> Catalog; backend SQLite owns users/progress, catalog SQLite owns authoritative metadata.
+The TUI connects to Gin over HTTP, TCP, UDP and WebSocket. Gin calls the separate gRPC catalog. Backend SQLite owns users, progress and chat. Catalog SQLite owns authoritative manga metadata.
 
 
 ### Data and process ownership
 
-cmd/catalog owns the authoritative manga catalog and seeds 54 titles from data/manga_seed.json only when empty. cmd/backend stores users and user_progress, enforces JWT identity and handles library writes. A legacy manga table remains in the backend schema, but catalog validation and user-facing search/detail use real gRPC calls to the separate catalog process.
+cmd/catalog owns the authoritative catalog and seeds 54 titles from data/manga_seed.json when empty. cmd/backend stores users, user_progress and chat_messages, and enforces JWT identity. Catalog validation, search by title or author, and manga details go through gRPC.
 
 The TUI performs HTTP transactions and runs TCP, UDP and WebSocket workers. Network callbacks dispatch widget changes through tview's event loop. Shared connection and authentication state uses a mutex. SQLite writes are serialized through one backend connection; an UPDATE ... RETURNING statement binds every response version to its own committed update.
 
@@ -48,12 +48,12 @@ Feature: push progress to another session of the same account. Flow: committed u
 
 ### UDP
 
-Feature: best-effort chapter alerts. Flow: release -> gRPC update -> one JSON datagram per subscribed return address -> visible TUI notification. Why: lightweight fan-out; loss is acceptable for advisory alerts. Subscribe/unsubscribe use the same source socket. Failure: packets can be lost; periodic renewal retains subscriptions. An acknowledged message queue would offer stronger delivery at greater complexity.
+Chapter releases send one JSON datagram per subscribed return address. UDP offers lightweight fan-out for advisory alerts. The TUI waits for a subscription acknowledgement and renews it periodically. UDP packets can be lost. If the server cannot bind its UDP port, chapter releases still persist and report alerts as unavailable.
 
 
 ### WebSocket
 
-Feature: interactive room discussion. Flow: authenticated HTTP upgrade -> Hub room membership -> full-duplex framed chat. Why: immediate bidirectional messages without polling. Server claims fix the author and room. Failure: bounded handshakes/writes and disconnect cleanup; another room cannot receive a room's messages. The TUI reconnects when Discussion is re-entered; durable chat is outside scope.
+An authenticated socket sends chat in both directions without polling. The backend assigns the author and room, commits the message to SQLite, then broadcasts it. The TUI keeps the draft if the write fails or no echo arrives. Joining a room replays its latest 50 messages after reconnect or restart.
 
 
 ### gRPC
@@ -73,7 +73,7 @@ Gin validates a non-negative chapter without narrowing it to int32, checks it ag
 
 ### Protected release and best-effort notifications
 
-Release is denied before calling the catalog unless both credentials are present and valid. Successful releases update the authoritative count before notifying registered UDP addresses. The TUI's u action sends unsubscribe before closing its socket. Delivery is advisory: disconnected or unregistered receivers do not gain a guaranteed replay.
+The admin route requires JWT and the admin key. An atomic catalog update accepts only a chapter strictly above the current total. A repeated or lower chapter returns HTTP 409 before UDP fan-out. After a successful write, the backend sends the event to registered addresses if UDP is available. Delivery remains best effort.
 
 
 ## 4. Verification and observed results
@@ -119,7 +119,9 @@ Fix: remove TCP identity fallbacks; share strict HS256/expiry/identity validatio
 
 ### Known limitations and design tradeoffs
 
-Progress uses last committed write semantics with increasing versions, not compare-and-swap conflict rejection. Clients discard stale events, but TCP updates have no durable offline replay; refresh after reconnect reconciles data. SQLite serializes writes and is suitable for the class-scale workload rather than a high-write cluster. Rooms and alert feeds are in memory. UDP can lose packets. Tokens are validated on connection, not continuously revalidated throughout an open socket. Remote deployment would require TLS, secret management and additional hardening. Redis is not used.
+Progress uses the latest committed write and clients discard stale versions. Refresh the library after an offline period to reconcile missed TCP updates. SQLite serializes writes. Room membership and UDP alert feeds are in memory, and chat messages persist in SQLite. UDP can lose packets. The server validates tokens when a socket connects. The demo runs on localhost, and the project uses no Redis.
+
+The acceptance suite verifies that a missing or null chapter leaves progress and version intact, while chapter zero remains valid. It also checks concurrent duplicate releases, UDP port conflicts and SQLite chat replay after both processes restart. See docs/verification/postman-feature-acceptance.json.
 
 
 ### Member contributions and live ownership

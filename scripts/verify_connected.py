@@ -25,8 +25,8 @@ ROOT = Path(__file__).resolve().parents[1]
 MODULE = ROOT / "mangahub-main" / "MangaHub-main"
 
 
-def free_port():
-    with socket.socket() as s:
+def free_port(kind=socket.SOCK_STREAM):
+    with socket.socket(socket.AF_INET, kind) as s:
         s.bind(("127.0.0.1", 0))
         return s.getsockname()[1]
 
@@ -77,7 +77,8 @@ def run():
         extension = ".exe" if os.name == "nt" else ""
         for command in ("catalog", "backend"):
             subprocess.run(["go", "build", "-o", str(folder / (command + extension)), "./cmd/" + command], cwd=MODULE, check=True)
-        http_port, tcp_port, udp_port, grpc_port = [free_port() for _ in range(4)]
+        http_port, tcp_port, grpc_port = [free_port() for _ in range(3)]
+        udp_port = free_port(socket.SOCK_DGRAM)
         env = dict(os.environ, HTTP_PORT=str(http_port), TCP_PORT=str(tcp_port), UDP_PORT=str(udp_port), GRPC_PORT=str(grpc_port),
                    CATALOG_GRPC_ADDR=f"127.0.0.1:{grpc_port}", CATALOG_DB_PATH=str(folder / "catalog.db"),
                    BACKEND_DB_PATH=str(folder / "backend.db"), JWT_SECRET=secrets.token_hex(32), ADMIN_API_KEY=secrets.token_hex(32))
