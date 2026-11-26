@@ -1,11 +1,52 @@
+# ==========================================
+# MangaHub Go Module .gitignore
+# ==========================================
+
+# --- Environment, Secrets & Local Sessions ---
+.env
+.env.*
+!.env.example
+.tui_session.json
+
+# --- Local Databases & Backups (keep data/manga_seed.json) ---
+*.db
+*.db-wal
+*.db-shm
+*.db-journal
+*.sqlite
+*.sqlite3
+data/backups/
+
+# --- Go Build Artifacts, Binaries & Coverage ---
+bin/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+coverage.*
+
+# --- Logs, Temp Files & Submission Archives ---
+tmp/
+*.tmp
+*.bak
+*.log
+*.zip
+
+# --- IDE & OS Metadata ---
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# --- Local AI / Code Intelligence Tools ---
 .gitnexus/
 .claude/
 .scripts/
 AGENTS.md
 CLAUDE.md
-bin/
-*.exe
-*.db
-.env
-.tui_session.json
-
